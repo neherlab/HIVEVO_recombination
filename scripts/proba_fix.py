@@ -15,15 +15,12 @@ def get_mutation_positions(patient, region, aft, eps=0.01):
         mutation_positions[:, initial_idx[ii], ii] = np.zeros(aft.shape[0]).astype(bool)
     return mutation_positions
 
-def get_fixation_positions(patient, region, aft, eps=0.05, timepoint="any"):
+def get_fixation_positions(patient, region, aft, eps=0.01, timepoint="any"):
     """
     Return a boolean matrix where True are the mutations with more than 1-eps frequency at some timepoint / last time point.
     timepoint = ["any", "last"]
     """
-    fixation_positions = aft > 1-eps
-    initial_idx = patient.get_initial_indices(region)
-    for ii in range(aft.shape[2]):
-        fixation_positions[:, initial_idx[ii], ii] = np.zeros(aft.shape[0]).astype(bool)
+    fixation_positions = get_mutation_positions(patient, region, aft, 1-eps)
 
     if timepoint == "any":
         return np.sum(fixation_positions, axis=0, dtype=bool)
@@ -32,24 +29,36 @@ def get_fixation_positions(patient, region, aft, eps=0.05, timepoint="any"):
     else:
         raise ValueError("Condition of fixation is not understood.")
 
+
+
 patient_name = "p1"
-region = "env"
-
 patient = Patient.load(patient_name)
-aft = patient.get_allele_frequency_trajectories(region)
-mut_pos = get_mutation_positions(patient, region, aft)
-fix_pos = get_fixation_positions(patient, region, aft)
+# region = "env"
+plt.figure()
+for region in list(patient.annotation.keys())[:10]:
 
-# rise_fall_pos = np.logical_and(fix_pos, ~get_fixation_positions(patient, region, aft, timepoint="last"))
+    aft = patient.get_allele_frequency_trajectories(region)
+    mut_pos = get_mutation_positions(patient, region, aft)
+    fix_pos = get_fixation_positions(patient, region, aft)
 
-# mutations = np.sum(np.sum(mut_pos, axis=0, dtype=bool).astype(int), axis=0)
-# fixations = np.sum(fix_pos.astype(int), axis=0)
-# plt.plot(mutations)
-# plt.plot(fixations)
+    mut_aft = copy.deepcopy(aft)
+    mut_aft.mask = ~mut_pos
+    mut_fixated_aft = copy.deepcopy(aft)
+    mut_fixated_aft.mask = ~np.tile(fix_pos, (aft.shape[0],1,1))
 
-mut_aft = copy.deepcopy(aft)
-mut_aft.mask = ~mut_pos
+    nonfixing_mut_aft = mut_aft[np.logical_and(mut_pos, mut_fixated_aft.mask)]
+    fixing_mut_aft = mut_aft[~mut_fixated_aft.mask]
 
-mut_fixated_aft = copy.deepcopy(aft)
-mut_fixated_aft.mask = ~np.tile(fix_pos, (aft.shape[0],1,1))
-plt.hist(mut_fixated_aft[~mut_fixated_aft.mask], bins=30)
+    h, b = np.histogram(fixing_mut_aft, bins=10, range=(0,1))
+    hh, b = np.histogram(mut_aft[~mut_aft.mask], bins=10, range=(0,1))
+    bins = 0.5*(b[1:] + b[:-1])
+
+    proba = h/hh
+
+    plt.plot(bins, proba, 'x-', label=region)
+
+plt.plot([0,1], [0,1], 'k-')
+plt.xlim([0,1])
+plt.ylim([0,1])
+plt.legend()
+plt.show()
