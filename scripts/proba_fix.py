@@ -35,6 +35,7 @@ patient_name = "p1"
 patient = Patient.load(patient_name)
 # region = "env"
 plt.figure()
+plt.title(patient_name, fontsize=16)
 for region in list(patient.annotation.keys())[:10]:
 
     aft = patient.get_allele_frequency_trajectories(region)
@@ -53,12 +54,15 @@ for region in list(patient.annotation.keys())[:10]:
     hh, b = np.histogram(mut_aft[~mut_aft.mask], bins=10, range=(0,1))
     bins = 0.5*(b[1:] + b[:-1])
 
-    proba = h/hh
+    mask = hh != 0
+    proba = h[mask]/hh[mask]
 
-    plt.plot(bins, proba, 'x-', label=region)
+    plt.plot(bins[mask], proba, 'x-', label=region)
 
 plt.plot([0,1], [0,1], 'k-')
 plt.xlim([0,1])
 plt.ylim([0,1])
+plt.xlabel(r"$\nu$", fontsize=16)
+plt.ylabel(r"$P_{fix}$", fontsize=16)
 plt.legend()
 plt.show()
