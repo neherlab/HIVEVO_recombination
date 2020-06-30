@@ -1,19 +1,30 @@
 import numpy as np
 
+def initial_idx_mask(patient, region, aft):
+    """
+    Return a 3D (time*letter*genome_position) boolean matrix where True are all the position that correspond
+    to the initial sequence.
+    """
+    initial_idx = patient.get_initial_indices(region)
+    mask = np.zeros(aft.shape, dtype=bool)
+    for ii in range(aft.shape[2]):
+        mask[:, initial_idx[ii], ii] = np.ones(aft.shape[0], dtype=bool)
+    return mask
+
 def get_mutation_positions(patient, region, aft, eps=0.01):
     """
-    Return a boolean matrix where True are mutations positions with more than eps frequency.
+    Return a 3D (time*letter*genome_position) boolean matrix where True are mutations positions with more
+    than eps frequency.
     Original nucleotides are not considered as mutations.
     """
     mutation_positions = aft > eps
-    initial_idx = patient.get_initial_indices(region)
-    for ii in range(aft.shape[2]):
-        mutation_positions[:, initial_idx[ii], ii] = np.zeros(aft.shape[0]).astype(bool)
+    mutation_positions[initial_idx_mask(patient, region, aft)] = False
     return mutation_positions
 
 def get_fixation_positions(patient, region, aft, eps=0.01, timepoint="any"):
     """
-    Return a boolean matrix where True are the mutations with more than 1-eps frequency at some timepoint / last time point.
+    Return a 2D (letter*genome_position) boolean matrix where True are the mutations with more than 1-eps
+    frequency at some timepoint / last time point.
     timepoint = ["any", "last"]
     """
     fixation_positions = get_mutation_positions(patient, region, aft, 1-eps)
