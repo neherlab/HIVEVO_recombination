@@ -6,6 +6,7 @@ def initial_idx_mask(patient, region, aft):
     to the initial sequence.
     """
     initial_idx = patient.get_initial_indices(region)
+    #TODO: optimize this, it is really slow
     mask = np.zeros(aft.shape, dtype=bool)
     for ii in range(aft.shape[2]):
         mask[:, initial_idx[ii], ii] = np.ones(aft.shape[0], dtype=bool)
