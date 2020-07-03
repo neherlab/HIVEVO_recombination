@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 import filenames
 from hivevo.patients import Patient
 import tools
@@ -101,9 +102,9 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
 
 
 def filter(trajectory_list, filter_str):
-    filtered_trajectory_list = []
-    for traj in trajectory_list:
-        if eval(filter_str):
-            filtered_trajectory_list = filtered_trajectory_list + [traj]
-
-    return filtered_trajectory_list
+    """
+    Evaluate filter_str on all elements (traj) of the trajectory_list and returned the filtered list.
+    Return a deepcopy of the elements. Change to a reference instead of copy for performance optimisation.
+    It is better to use list comprehension directly ex. : filtered_traj = [x for x in trajectories if np.sum(x.frequencies > freq_min, dtype=bool)]
+    """
+    return [traj for traj in trajectory_list if eval(filter_str)]
