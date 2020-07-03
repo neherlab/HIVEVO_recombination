@@ -24,6 +24,14 @@ class Trajectory():
 
 
 def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_high=0.99):
+    """
+    Creates a list of trajectories from a patient allele frequency trajectory (aft).
+    Select the maximal amount of trajectories:
+        - trajectories are extinct before the first time point
+        - trajectories are either active, extinct or fixed after the last time point, which is specified
+        - a trajectory can be as small as 1 point (extinct->active->fixed, or extinct->active->exctinct)
+        - several trajectories can come from a single aft (for ex. extinct->active->extinct->active->fixed)
+    """
     trajectories = []
     # Exctract the full time series of af for mutations and place them in a 2D matrix as columns
     mutation_positions = tools.get_mutation_positions(patient, region, aft, threshold_low)
