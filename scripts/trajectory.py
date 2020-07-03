@@ -94,7 +94,7 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
             else:
                 fixation = "lost"
 
-            traj = Trajectory(np.array(freqs), t, date, fixation, threshold_low, threshold_high, patient.name, region,
+            traj = Trajectory(np.array(freqs), t-t[0], date+t[0], fixation, threshold_low, threshold_high, patient.name, region,
                               position=coordinates[0, ii, 1], nucleotide=coordinates[0, ii, 0])
             trajectories = trajectories + [traj]
     return trajectories

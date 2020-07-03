@@ -32,3 +32,6 @@ region = "env"
 
 aft = patient.get_allele_frequency_trajectories(region)
 trajectories = create_trajectory_list(patient, region, aft)
+
+from filter import filter
+filtered_traj = filter(trajectories, "np.sum(traj.frequencies > 0.5, dtype=bool)")
