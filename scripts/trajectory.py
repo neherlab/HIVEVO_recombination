@@ -6,19 +6,20 @@ import tools
 
 
 class Trajectory():
-    def __init__(self, frequencies, t, date, fixation, threshold_low, threshold_high,
+    def __init__(self, frequencies, t, date, t_last_sample, fixation, threshold_low, threshold_high,
                  patient, region, position, nucleotide):
 
-        self.frequencies = frequencies          # Numpy 1D vector
-        self.t = t                              # Numpy 1D vector (in days)
-        self.date = date                        # Date at t=0 (int, in days)
-        self.fixation = fixation                # "fixed", "active", "lost" (at the next time point)
-        self.threshold_low = threshold_low      # Value of threshold_low used for extraction
-        self.threshold_high = threshold_high    # Value of threshold_high used for extraction
-        self.patient = patient                  # Patient name (string)
-        self.region = region                    # Region name, string
-        self.position = position                # Position on the region (int)
-        self.nucleotide = nucleotide            # Nucleotide number according to HIVEVO_access/hivevo/sequence alpha
+        self.frequencies = frequencies              # Numpy 1D vector
+        self.t = t                                  # Numpy 1D vector (in days)
+        self.date = date                            # Date at t=0 (int, in days)
+        self.t_last_sample = t_last_sample          # Number of days at which last sample was taken for the patient (relative to t[0] = 0)
+        self.fixation = fixation                    # "fixed", "active", "lost" (at the next time point)
+        self.threshold_low = threshold_low          # Value of threshold_low used for extraction
+        self.threshold_high = threshold_high        # Value of threshold_high used for extraction
+        self.patient = patient                      # Patient name (string)
+        self.region = region                        # Region name, string
+        self.position = position                    # Position on the region (int)
+        self.nucleotide = nucleotide                # Nucleotide number according to HIVEVO_access/hivevo/sequence alpha
 
     def __repr__(self):
         return str(self.__dict__)
@@ -95,7 +96,7 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
             else:
                 fixation = "lost"
 
-            traj = Trajectory(np.array(freqs), t - t[0], date + t[0], fixation, threshold_low, threshold_high, patient.name, region,
+            traj = Trajectory(np.array(freqs), t - t[0], date + t[0], time[-1] - t[0], fixation, threshold_low, threshold_high, patient.name, region,
                               position=coordinates[0, ii, 1], nucleotide=coordinates[0, ii, 0])
             trajectories = trajectories + [traj]
     return trajectories
