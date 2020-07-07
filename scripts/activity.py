@@ -46,14 +46,15 @@ def plot_activity(patient, region, time_bins, fixed, lost, active, sum, fontsize
     plt.show()
 
 
-patient_name = "p1"
-patient = Patient.load(patient_name)
-region = "env"
+if __name__ == "__main__":
+    patient_name = "p1"
+    patient = Patient.load(patient_name)
+    region = "env"
 
-aft = patient.get_allele_frequency_trajectories(region)
-trajectories = create_trajectory_list(patient, region, aft)
-filtered_traj = [traj for traj in trajectories if np.sum(traj.frequencies > 0.2, dtype=bool)]
-filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
+    aft = patient.get_allele_frequency_trajectories(region)
+    trajectories = create_trajectory_list(patient, region, aft)
+    filtered_traj = [traj for traj in trajectories if np.sum(traj.frequencies > 0.2, dtype=bool)]
+    filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
 
-time_bins, fixed, lost, active, sum = get_activity(filtered_traj)
-plot_activity(patient, region, time_bins, fixed, lost, active, sum)
+    time_bins, fixed, lost, active, sum = get_activity(filtered_traj)
+    plot_activity(patient, region, time_bins, fixed, lost, active, sum)

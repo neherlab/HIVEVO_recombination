@@ -32,24 +32,24 @@ def plot_length_distribution(trajectory_list, freq_min, fontsize=16):
     plt.ylabel("#Trajectories", fontsize=fontsize)
 
 
-patient_name = "p1"
-patient = Patient.load(patient_name)
-region = "env"
+if __name__ == "__main__":
 
-aft = patient.get_allele_frequency_trajectories(region)
-trajectories = create_trajectory_list(patient, region, aft)
+    patient_name = "p1"
+    patient = Patient.load(patient_name)
+    region = "env"
 
+    aft = patient.get_allele_frequency_trajectories(region)
+    trajectories = create_trajectory_list(patient, region, aft)
 
-### Trajectory durations ###
-for freq_min in np.arange(0, 1, 0.2):
-    filtered_traj = filter(trajectories, f"np.sum(traj.frequencies > {freq_min}, dtype=bool)")
-    time_bins, nb_traj = get_duration_distribution(trajectories)
-    plot_duration_distribution(time_bins, nb_traj, freq_min)
+    ### Trajectory durations ###
+    for freq_min in np.arange(0, 1, 0.2):
+        filtered_traj = filter(trajectories, f"np.sum(traj.frequencies > {freq_min}, dtype=bool)")
+        time_bins, nb_traj = get_duration_distribution(trajectories)
+        plot_duration_distribution(time_bins, nb_traj, freq_min)
 
-### Trajectory lengths ###
-for freq_min in np.arange(0, 1, 0.2):
-    filtered_traj = [x for x in trajectories if np.sum(x.frequencies > freq_min, dtype=bool)]
-    plot_length_distribution(filtered_traj, freq_min)
+    ### Trajectory lengths ###
+    for freq_min in np.arange(0, 1, 0.2):
+        filtered_traj = [x for x in trajectories if np.sum(x.frequencies > freq_min, dtype=bool)]
+        plot_length_distribution(filtered_traj, freq_min)
 
-
-plt.show()
+    plt.show()

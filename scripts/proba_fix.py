@@ -1,43 +1,73 @@
-import filenames
 import numpy as np
-import copy
 import matplotlib.pyplot as plt
+import filenames
 from hivevo.patients import Patient
-from tools import get_mutation_positions, get_fixation_positions
+from trajectory import Trajectory, create_trajectory_list, filter
 
 
-patient_name = "p1"
-patient = Patient.load(patient_name)
-# region = "env"
-plt.figure()
-plt.title(patient_name, fontsize=16)
-for region in ['pol', 'env', 'gag']:
+def get_proba_fix(trajectories, bin_filter="in", nb_bin=8, freq_range=[0.05, 0.95]):
+    if bin_filter not in ["in", "through"]:
+        raise ValueError("bin_filter parameter must be 'in' or 'through'")
+
+    trajectories = [traj for traj in trajectories if traj.fixation != "active"]  # Remove active trajectories
+
+    frequency_bins = np.linspace(freq_range[0], freq_range[1], nb_bin)
+    traj_per_bin, fixed_per_bin, lost_per_bin, proba_fix = [], [], [], []
+
+    for ii in range(len(frequency_bins) - 1):
+        # Goes through the bin
+        if bin_filter == "through":
+            bin_trajectories = [traj for traj in trajectories if np.sum(traj.frequencies >= frequency_bins[ii],
+                                                                        dtype=bool) and np.sum(traj.frequencies < frequency_bins[ii + 1], dtype=bool)]
+
+        # Is seen in the bin
+        if bin_filter == "in":
+            bin_trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
+                traj.frequencies >= frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]), dtype=bool)]
+
+        nb_traj = len(bin_trajectories)
+        nb_fix = len([traj for traj in bin_trajectories if traj.fixation == "fixed"])
+        nb_lost = len([traj for traj in bin_trajectories if traj.fixation == "lost"])
+
+        traj_per_bin = traj_per_bin + [nb_traj]
+        fixed_per_bin = fixed_per_bin + [nb_fix]
+        lost_per_bin = lost_per_bin + [nb_lost]
+        proba_fix = proba_fix + [nb_fix / nb_traj]
+
+    frequency_bins = 0.5 * (frequency_bins[:-1] + frequency_bins[1:])
+
+    return frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin
+
+
+def plot_proba_fix(patient, region, frequency_bins, proba_fix, traj, fixed, lost, criteria, fontsize=16):
+    plt.figure()
+    plt.title(f"Proba fix patient {patient.name} region {region} " + criteria + " bin", fontsize=fontsize)
+    plt.plot(frequency_bins, proba_fix, '.-')
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.ylabel(r"$P_{fix}$", fontsize=fontsize)
+    plt.xlabel("Frequency", fontsize=fontsize)
+
+    plt.figure()
+    plt.plot(frequency_bins, traj_per_bin, '.-', label="# trajectories")
+    plt.plot(frequency_bins, fixed_per_bin, '.-', label="# fixed")
+    plt.plot(frequency_bins, lost_per_bin, '.-', label="# lost")
+    plt.legend(fontsize=fontsize)
+    plt.ylabel("# trajectories", fontsize=fontsize)
+    plt.xlabel("Frequency", fontsize=fontsize)
+    plt.show()
+
+
+if __name__ == "__main__":
+    patient_name = "p1"
+    patient = Patient.load(patient_name)
+    region = "env"
+    criteria = "in"
 
     aft = patient.get_allele_frequency_trajectories(region)
-    mut_pos = get_mutation_positions(patient, region, aft)
-    fix_pos = get_fixation_positions(patient, region, aft)
+    trajectories = create_trajectory_list(patient, region, aft)
+    filtered_traj = trajectories
+    # filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
 
-    mut_aft = copy.deepcopy(aft)
-    mut_aft.mask = ~mut_pos
-    mut_fixated_aft = copy.deepcopy(aft)
-    mut_fixated_aft.mask = ~np.tile(fix_pos, (aft.shape[0],1,1))
-
-    nonfixing_mut_aft = mut_aft[np.logical_and(mut_pos, mut_fixated_aft.mask)]
-    fixing_mut_aft = mut_aft[~mut_fixated_aft.mask]
-
-    h, b = np.histogram(fixing_mut_aft, bins=10, range=(0,1))
-    hh, b = np.histogram(mut_aft[~mut_aft.mask], bins=10, range=(0,1))
-    bins = 0.5*(b[1:] + b[:-1])
-
-    mask = (hh != 0)
-    proba = h[mask]/hh[mask]
-
-    plt.plot(bins[mask], proba, 'x-', label=region)
-
-plt.plot([0,1], [0,1], 'k-')
-plt.xlim([0,1])
-plt.ylim([0,1])
-plt.xlabel(r"$\nu$", fontsize=16)
-plt.ylabel(r"$P_{fix}$", fontsize=16)
-plt.legend()
-plt.show()
+    frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(filtered_traj, criteria)
+    plot_proba_fix(patient, region, frequency_bins, proba_fix,
+                   traj_per_bin, fixed_per_bin, lost_per_bin, criteria)
