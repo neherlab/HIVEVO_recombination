@@ -32,7 +32,10 @@ def get_proba_fix(trajectories, bin_filter="in", nb_bin=8, freq_range=[0.05, 0.9
         traj_per_bin = traj_per_bin + [nb_traj]
         fixed_per_bin = fixed_per_bin + [nb_fix]
         lost_per_bin = lost_per_bin + [nb_lost]
-        proba_fix = proba_fix + [nb_fix / nb_traj]
+        if nb_traj > 0:
+            proba_fix = proba_fix + [nb_fix / nb_traj]
+        else:
+            proba_fix = proba_fix + [None]
 
     frequency_bins = 0.5 * (frequency_bins[:-1] + frequency_bins[1:])
 
@@ -58,16 +61,27 @@ def plot_proba_fix(patient, region, frequency_bins, proba_fix, traj, fixed, lost
 
 
 if __name__ == "__main__":
-    patient_name = "p1"
-    patient = Patient.load(patient_name)
-    region = "env"
-    criteria = "in"
+    patient_names = ["p1", "p2", "p4", "p5", "p6", "p8", "p9", "p10", "p11"]
+    criteria = "through"
+    region = "gag"
+    fontsize = 16
 
-    aft = patient.get_allele_frequency_trajectories(region)
-    trajectories = create_trajectory_list(patient, region, aft)
-    filtered_traj = trajectories
-    # filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
+    plt.figure()
+    plt.title(f"Proba fix region {region} " + criteria + " bin", fontsize=fontsize)
+    plt.ylabel(r"$P_{fix}$", fontsize=fontsize)
+    plt.xlabel("Frequency", fontsize=fontsize)
+    plt.plot([0, 1], [0, 1], 'k--')
+    for patient_name in patient_names[:6]:
+        patient = Patient.load(patient_name)
 
-    frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(filtered_traj, criteria)
-    plot_proba_fix(patient, region, frequency_bins, proba_fix,
-                   traj_per_bin, fixed_per_bin, lost_per_bin, criteria)
+        aft = patient.get_allele_frequency_trajectories(region)
+        trajectories = create_trajectory_list(patient, region, aft)
+        filtered_traj = trajectories
+        filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
+
+        frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(
+            filtered_traj, criteria)
+        plt.plot(frequency_bins, proba_fix, '.-', label=patient_name)
+
+    plt.legend()
+    plt.show()

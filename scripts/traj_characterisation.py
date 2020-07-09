@@ -10,7 +10,7 @@ def get_duration_distribution(trajectory_list):
     nb_traj = []
 
     for time in time_bins:
-        filtered_traj = filter(trajectories, f"traj.t[-1] >= {time}")
+        filtered_traj = filter(trajectory_list, f"traj.t[-1] >= {time}")
         nb_traj = nb_traj + [len(filtered_traj)]
     return time_bins, nb_traj
 
@@ -43,8 +43,8 @@ if __name__ == "__main__":
 
     ### Trajectory durations ###
     for freq_min in np.arange(0, 1, 0.2):
-        filtered_traj = filter(trajectories, f"np.sum(traj.frequencies > {freq_min}, dtype=bool)")
-        time_bins, nb_traj = get_duration_distribution(trajectories)
+        filtered_traj = [traj for traj in trajectories if np.sum(traj.frequencies > freq_min, dtype=bool)]
+        time_bins, nb_traj = get_duration_distribution(filtered_traj)
         plot_duration_distribution(time_bins, nb_traj, freq_min)
 
     ### Trajectory lengths ###
