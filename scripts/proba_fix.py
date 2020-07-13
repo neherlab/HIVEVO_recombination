@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import filenames
 from hivevo.patients import Patient
-from trajectory import Trajectory, create_trajectory_list, filter
+import trajectory
 
 
 def get_proba_fix(trajectories, bin_filter="in", nb_bin=8, freq_range=[0.05, 0.95]):
@@ -60,10 +60,45 @@ def plot_proba_fix(patient, region, frequency_bins, proba_fix, traj, fixed, lost
     plt.show()
 
 
+def average_proba_fix(patient_names, criteria, region, nb_bin=10, remove_one_point_traj=False):
+    all_traj_per_bin, all_fixed_per_bin = np.array([]), np.array([])
+    for patient_name in patient_names:
+        patient = Patient.load(patient_name)
+
+        aft = patient.get_allele_frequency_trajectories(region)
+        trajectories = trajectory.create_trajectory_list(patient, region, aft)
+        filtered_traj = trajectories
+        if remove_one_point_traj:
+            filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
+
+        frequency_bins, _, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(filtered_traj, criteria, nb_bin=nb_bin)
+        if patient_name == patient_names[0]:
+            all_traj_per_bin = np.array(traj_per_bin)
+            all_fixed_per_bin = np.array(fixed_per_bin)
+        else:
+            all_traj_per_bin = all_traj_per_bin + traj_per_bin
+            all_fixed_per_bin = all_fixed_per_bin + fixed_per_bin
+
+    avg_proba_fix = all_fixed_per_bin / all_traj_per_bin
+    err_proba_fix = avg_proba_fix * np.sqrt(1/all_fixed_per_bin + 1/all_traj_per_bin)
+
+    return frequency_bins, avg_proba_fix, all_traj_per_bin, all_fixed_per_bin, err_proba_fix
+
+
+def plot_average_proba(freq_bin, proba_fix, err_proba_fix, region, criteria):
+    plt.figure(figsize=(10,8))
+    plt.title(f"Average P_fix region {region} " + criteria + " bin", fontsize=fontsize)
+    plt.ylabel(r"$P_{fix}$", fontsize=fontsize)
+    plt.xlabel("Frequency", fontsize=fontsize)
+    plt.errorbar(freq_bin, proba_fix, yerr=err_proba_fix, fmt='.-', label="Average over patients")
+    plt.plot([0,1], [0,1], 'k--', label="neutral expectation")
+    plt.legend(fontsize=fontsize)
+    plt.show()
+
 if __name__ == "__main__":
     patient_names = ["p1", "p2", "p4", "p5", "p6", "p8", "p9", "p10", "p11"]
     criteria = "through"
-    region = "gag"
+    region = "env"
     fontsize = 16
 
     plt.figure()
@@ -71,13 +106,13 @@ if __name__ == "__main__":
     plt.ylabel(r"$P_{fix}$", fontsize=fontsize)
     plt.xlabel("Frequency", fontsize=fontsize)
     plt.plot([0, 1], [0, 1], 'k--')
-    for patient_name in patient_names[:6]:
+    for patient_name in patient_names:
         patient = Patient.load(patient_name)
 
         aft = patient.get_allele_frequency_trajectories(region)
-        trajectories = create_trajectory_list(patient, region, aft)
+        trajectories = trajectory.create_trajectory_list(patient, region, aft)
         filtered_traj = trajectories
-        filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
+        # filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
 
         frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(
             filtered_traj, criteria)
