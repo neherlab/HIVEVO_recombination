@@ -55,7 +55,9 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
 
     # Removing "mutation" at first time point because we don't know their history, ie rising or falling
     mask2 = np.where(mut_frequencies[0, :] > threshold_low)
-    mut_frequencies = np.delete(mut_frequencies, mask2, axis=1)
+    mut_freq_mask = mut_frequencies.mask # keep the mask aside as np.delete removes it
+    mut_freq_mask = np.delete(mut_freq_mask, mask2, axis=1)
+    mut_frequencies = np.array(np.delete(mut_frequencies, mask2, axis=1))
     coordinates = np.delete(coordinates, mask2, axis=1)
 
     filter1 = mut_frequencies > threshold_low
@@ -70,6 +72,17 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
     trajectory_stop_filter = np.insert(trajectory_stop_filter, 0, np.zeros(
         trajectory_stop_filter.shape[1], dtype=bool), axis=0)
 
+    # Include the masked points in middle of trajectories (ex [0, 0.2, 0.6, --, 0.8, 1])
+    stop_at_masked_filter = np.logical_and(trajectory_stop_filter, mut_freq_mask)
+    stop_at_masked_shifted = np.roll(stop_at_masked_filter, 1, axis=0)
+    stop_at_masked_shifted[0,:] = False
+    stop_at_masked_restart = np.logical_and(stop_at_masked_shifted, new_trajectory_filter)
+
+    new_trajectory_filter[stop_at_masked_restart] = False
+    trajectory_stop_filter[np.roll(stop_at_masked_restart, -1, 0)] = False
+
+    breakpoint()
+
     date = patient.dsi[0]
     time = patient.dsi - date
     # iterate though all columns (<=> mutations trajectories)
@@ -83,10 +96,12 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
                 idx_end = np.where(trajectory_stop_filter[:, ii] == True)[0][jj]  # fixed or lost
 
             if idx_end == None:
-                freqs = mut_frequencies[idx_start:, ii]
+                freqs = np.ma.array(mut_frequencies[idx_start:, ii])
+                freqs.mask = mut_freq_mask[idx_start:, ii]
                 t = time[idx_start:]
             else:
-                freqs = mut_frequencies[idx_start:idx_end, ii]
+                freqs = np.ma.array(mut_frequencies[idx_start:idx_end, ii])
+                freqs.mask = mut_freq_mask[idx_start:idx_end, ii]
                 t = time[idx_start:idx_end]
 
             if idx_end == None:
@@ -96,7 +111,7 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
             else:
                 fixation = "lost"
 
-            traj = Trajectory(np.array(freqs), t - t[0], date + t[0], time[-1] - t[0], fixation, threshold_low, threshold_high, patient.name, region,
+            traj = Trajectory(np.ma.array(freqs), t - t[0], date + t[0], time[-1] - t[0], fixation, threshold_low, threshold_high, patient.name, region,
                               position=coordinates[0, ii, 1], nucleotide=coordinates[0, ii, 0])
             trajectories = trajectories + [traj]
     return trajectories
@@ -109,3 +124,9 @@ def filter(trajectory_list, filter_str):
     It is better to use list comprehension directly ex. : filtered_traj = [x for x in trajectories if np.sum(x.frequencies > freq_min, dtype=bool)]
     """
     return [traj for traj in trajectory_list if eval(filter_str)]
+
+
+if __name__ == "__main__":
+    patient = Patient.load("p3")
+    aft = patient.get_allele_frequency_trajectories("env")
+    trajectories = create_trajectory_list(patient, "env", aft)

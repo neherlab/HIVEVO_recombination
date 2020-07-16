@@ -96,7 +96,7 @@ def plot_average_proba(freq_bin, proba_fix, err_proba_fix, region, criteria):
     plt.show()
 
 if __name__ == "__main__":
-    patient_names = ["p1", "p2", "p4", "p5", "p6", "p8", "p9", "p11"]
+    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
     criteria = "through"
     region = "env"
     fontsize = 16

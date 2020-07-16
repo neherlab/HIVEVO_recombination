@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def get_activity(patient, region, normalize=False, remove_one_point_traj=False):
+def get_activity(patient, region, normalize=False, remove_one_point_traj=False, min_freq=0.2):
     time_bins = np.linspace(0, 2000, 30)
     aft = patient.get_allele_frequency_trajectories(region)
     trajectories = create_trajectory_list(patient, region, aft)
-    filtered_traj = [traj for traj in trajectories if np.sum(traj.frequencies > 0.2, dtype=bool)]
+    filtered_traj = [traj for traj in trajectories if np.sum(traj.frequencies > min_freq, dtype=bool)]
     if remove_one_point_traj:
         filtered_traj = [traj for traj in filtered_traj if traj.t[-1] > 0]  # Remove 1 point only trajectories
 
@@ -52,11 +52,11 @@ def plot_activity(patient, region, time_bins, fixed, lost, active, sum, fontsize
     plt.show()
 
 
-def average_activity(patient_names, region, normalize=True, remove_one_point_traj=False):
+def average_activity(patient_names, region, normalize=True, remove_one_point_traj=False, min_freq=0.2):
     for patient_name in patient_names:
         patient = Patient.load(patient_name)
 
-        time_bins, fixed, lost, active, sum = get_activity(patient, region, False, remove_one_point_traj)
+        time_bins, fixed, lost, active, sum = get_activity(patient, region, False, remove_one_point_traj, min_freq)
         if patient_name == patient_names[0]:
             tot_fixed = np.array(fixed)
             tot_lost = np.array(lost)
@@ -75,7 +75,7 @@ def average_activity(patient_names, region, normalize=True, remove_one_point_tra
         tot_sum = np.ones_like(tot_fixed)
 
     return time_bins, tot_fixed, tot_lost, tot_active, tot_sum
-<
+
 def plot_average_activity(region, time_bins, fixed, lost, active, sum, fontsize=16):
     plt.figure(figsize=(10,8))
     plt.title(f"Average activity region {region}", fontsize=fontsize)
@@ -87,6 +87,7 @@ def plot_average_activity(region, time_bins, fixed, lost, active, sum, fontsize=
     plt.legend(fontsize=fontsize)
     plt.xlabel("Time [days]", fontsize=fontsize)
     plt.ylabel("# Trajectories", fontsize=fontsize)
+    plt.grid()
     plt.show()
 
 
