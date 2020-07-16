@@ -81,8 +81,6 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
     new_trajectory_filter[stop_at_masked_restart] = False
     trajectory_stop_filter[np.roll(stop_at_masked_restart, -1, 0)] = False
 
-    breakpoint()
-
     date = patient.dsi[0]
     time = patient.dsi - date
     # iterate though all columns (<=> mutations trajectories)
