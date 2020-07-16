@@ -12,7 +12,8 @@ class Trajectory():
         self.frequencies = frequencies              # Numpy 1D vector
         self.t = t                                  # Numpy 1D vector (in days)
         self.date = date                            # Date at t=0 (int, in days)
-        self.t_last_sample = t_last_sample          # Number of days at which last sample was taken for the patient (relative to t[0] = 0)
+        # Number of days at which last sample was taken for the patient (relative to t[0] = 0)
+        self.t_last_sample = t_last_sample
         self.fixation = fixation                    # "fixed", "active", "lost" (at the next time point)
         self.threshold_low = threshold_low          # Value of threshold_low used for extraction
         self.threshold_high = threshold_high        # Value of threshold_high used for extraction
@@ -55,7 +56,7 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
 
     # Removing "mutation" at first time point because we don't know their history, ie rising or falling
     mask2 = np.where(mut_frequencies[0, :] > threshold_low)
-    mut_freq_mask = mut_frequencies.mask # keep the mask aside as np.delete removes it
+    mut_freq_mask = mut_frequencies.mask  # keep the mask aside as np.delete removes it
     mut_freq_mask = np.delete(mut_freq_mask, mask2, axis=1)
     mut_frequencies = np.array(np.delete(mut_frequencies, mask2, axis=1))
     coordinates = np.delete(coordinates, mask2, axis=1)
@@ -75,7 +76,7 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
     # Include the masked points in middle of trajectories (ex [0, 0.2, 0.6, --, 0.8, 1])
     stop_at_masked_filter = np.logical_and(trajectory_stop_filter, mut_freq_mask)
     stop_at_masked_shifted = np.roll(stop_at_masked_filter, 1, axis=0)
-    stop_at_masked_shifted[0,:] = False
+    stop_at_masked_shifted[0, :] = False
     stop_at_masked_restart = np.logical_and(stop_at_masked_shifted, new_trajectory_filter)
 
     new_trajectory_filter[stop_at_masked_restart] = False
