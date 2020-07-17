@@ -17,8 +17,8 @@ def get_proba_fix(trajectories, bin_filter="in", nb_bin=8, freq_range=[0.05, 0.9
     for ii in range(len(frequency_bins) - 1):
         # Goes through the bin
         if bin_filter == "through":
-            bin_trajectories = [traj for traj in trajectories if np.sum(traj.frequencies >= frequency_bins[ii],
-                                                                        dtype=bool) and np.sum(traj.frequencies < frequency_bins[ii + 1], dtype=bool)]
+            bin_trajectories = [traj for traj in trajectories if
+                                np.sum(np.logical_and(traj.frequencies >= frequency_bins[ii], traj.frequencies < freq_range[-1]), dtype=bool)]
 
         # Is seen in the bin
         if bin_filter == "in":
@@ -69,9 +69,11 @@ def average_proba_fix(patient_names, criteria, region, nb_bin=10, remove_one_poi
         trajectories = trajectory.create_trajectory_list(patient, region, aft)
         filtered_traj = trajectories
         if remove_one_point_traj:
-            filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
+            # Remove 1 point only trajectories
+            filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]
 
-        frequency_bins, _, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(filtered_traj, criteria, nb_bin=nb_bin)
+        frequency_bins, _, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(
+            filtered_traj, criteria, nb_bin=nb_bin)
         if patient_name == patient_names[0]:
             all_traj_per_bin = np.array(traj_per_bin)
             all_fixed_per_bin = np.array(fixed_per_bin)
@@ -80,43 +82,30 @@ def average_proba_fix(patient_names, criteria, region, nb_bin=10, remove_one_poi
             all_fixed_per_bin = all_fixed_per_bin + fixed_per_bin
 
     avg_proba_fix = all_fixed_per_bin / all_traj_per_bin
-    err_proba_fix = avg_proba_fix * np.sqrt(1/all_fixed_per_bin + 1/all_traj_per_bin)
+    err_proba_fix = avg_proba_fix * np.sqrt(1 / all_fixed_per_bin + 1 / all_traj_per_bin)
 
     return frequency_bins, avg_proba_fix, all_traj_per_bin, all_fixed_per_bin, err_proba_fix
 
 
-def plot_average_proba(freq_bin, proba_fix, err_proba_fix, region, criteria):
-    plt.figure(figsize=(10,8))
+def plot_average_proba(freq_bin, proba_fix, err_proba_fix, region, criteria, fontsize=16):
+    plt.figure(figsize=(10, 8))
     plt.title(f"Average P_fix region {region} " + criteria + " bin", fontsize=fontsize)
     plt.ylabel(r"$P_{fix}$", fontsize=fontsize)
     plt.xlabel("Frequency", fontsize=fontsize)
     plt.errorbar(freq_bin, proba_fix, yerr=err_proba_fix, fmt='.-', label="Average over patients")
-    plt.plot([0,1], [0,1], 'k--', label="neutral expectation")
+    plt.plot([0, 1], [0, 1], 'k--', label="neutral expectation")
     plt.legend(fontsize=fontsize)
     plt.show()
 
+
 if __name__ == "__main__":
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    criteria = "through"
+    criteria = "in"
     region = "env"
-    fontsize = 16
+    remove_one_point_only = False
+    nb_bin = 20
 
-    plt.figure()
-    plt.title(f"Proba fix region {region} " + criteria + " bin", fontsize=fontsize)
-    plt.ylabel(r"$P_{fix}$", fontsize=fontsize)
-    plt.xlabel("Frequency", fontsize=fontsize)
-    plt.plot([0, 1], [0, 1], 'k--')
-    for patient_name in patient_names:
-        patient = Patient.load(patient_name)
-
-        aft = patient.get_allele_frequency_trajectories(region)
-        trajectories = trajectory.create_trajectory_list(patient, region, aft)
-        filtered_traj = trajectories
-        # filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]  # Remove 1 point only trajectories
-
-        frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(
-            filtered_traj, criteria)
-        plt.plot(frequency_bins, proba_fix, '.-', label=patient_name)
-
-    plt.legend()
-    plt.show()
+    # Function calls
+    frequency_bins, avg_proba_fix, all_traj_per_bin, all_fixed_per_bin, err_proba_fix = average_proba_fix(
+        patient_names, criteria, region, nb_bin, remove_one_point_only)
+    plot_average_proba(frequency_bins, avg_proba_fix, err_proba_fix, region, criteria)
