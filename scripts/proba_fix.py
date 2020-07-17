@@ -5,29 +5,24 @@ from hivevo.patients import Patient
 import trajectory
 
 
-def get_proba_fix(trajectories, bin_filter="in", nb_bin=8, freq_range=[0.05, 0.95]):
+def get_proba_fix(trajectories, nb_bin=8, bin_type="uniform", freq_range=[0.05, 0.95]):
     """
     Gives the probability of fixation in each frequency bin.
-    bin_filter="through" is biased, don't use it.
     """
-    if bin_filter not in ["in", "through"]:
-        raise ValueError("bin_filter parameter must be 'in' or 'through'")
+    if bin_type not in ["uniform", "nonuniform"]:
+        raise ValueError("bin_type must be either uniform or non uniform.")
+
+    if bin_type == "uniform":
+        frequency_bins = np.linspace(freq_range[0], freq_range[1], nb_bin)
+    elif bin_type == "nonuniform":
+        frequency_bins = np.linspace(freq_range[0], freq_range[1], nb_bin)
 
     trajectories = [traj for traj in trajectories if traj.fixation != "active"]  # Remove active trajectories
-
-    frequency_bins = np.linspace(freq_range[0], freq_range[1], nb_bin)
     traj_per_bin, fixed_per_bin, lost_per_bin, proba_fix = [], [], [], []
 
     for ii in range(len(frequency_bins) - 1):
-        # Goes through the bin
-        if bin_filter == "through":
-            bin_trajectories = [traj for traj in trajectories if
-                                np.sum(np.logical_and(traj.frequencies >= frequency_bins[ii], traj.frequencies < freq_range[-1]), dtype=bool)]
-
-        # Is seen in the bin
-        if bin_filter == "in":
-            bin_trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
-                traj.frequencies >= frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]), dtype=bool)]
+        bin_trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
+            traj.frequencies >= frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]), dtype=bool)]
 
         nb_traj = len(bin_trajectories)
         nb_fix = len([traj for traj in bin_trajectories if traj.fixation == "fixed"])
@@ -64,31 +59,21 @@ def plot_proba_fix(patient, region, frequency_bins, proba_fix, traj, fixed, lost
     plt.show()
 
 
-def average_proba_fix(patient_names, criteria, region, nb_bin=10, remove_one_point_traj=False):
-    all_traj_per_bin, all_fixed_per_bin = np.array([]), np.array([])
+def average_proba_fix(patient_names, region, bin_type="uniform", nb_bin=10, remove_one_point_traj=False):
+    # Combining all the trajectories
+    trajectories = []
     for patient_name in patient_names:
         patient = Patient.load(patient_name)
-
         aft = patient.get_allele_frequency_trajectories(region)
-        trajectories = trajectory.create_trajectory_list(patient, region, aft)
-        filtered_traj = trajectories
-        if remove_one_point_traj:
-            # Remove 1 point only trajectories
-            filtered_traj = [traj for traj in trajectories if traj.t[-1] > 0]
+        trajectories = trajectories + trajectory.create_trajectory_list(patient, region, aft)
 
-        frequency_bins, _, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(
-            filtered_traj, criteria, nb_bin=nb_bin)
-        if patient_name == patient_names[0]:
-            all_traj_per_bin = np.array(traj_per_bin)
-            all_fixed_per_bin = np.array(fixed_per_bin)
-        else:
-            all_traj_per_bin = all_traj_per_bin + traj_per_bin
-            all_fixed_per_bin = all_fixed_per_bin + fixed_per_bin
+    # Computing proba and error
+    frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(
+        trajectories, nb_bin, bin_type)
 
-    avg_proba_fix = all_fixed_per_bin / all_traj_per_bin
-    err_proba_fix = avg_proba_fix * np.sqrt(1 / all_fixed_per_bin + 1 / all_traj_per_bin)
+    err_proba_fix = np.array(proba_fix) * np.sqrt(1 / np.array(fixed_per_bin) + 1 / np.array(traj_per_bin))
 
-    return frequency_bins, avg_proba_fix, all_traj_per_bin, all_fixed_per_bin, err_proba_fix
+    return frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, err_proba_fix
 
 
 def plot_average_proba(freq_bin, proba_fix, err_proba_fix, region, criteria, fontsize=16):
@@ -104,12 +89,27 @@ def plot_average_proba(freq_bin, proba_fix, err_proba_fix, region, criteria, fon
 
 if __name__ == "__main__":
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    criteria = "in"
+    bin_type = "uniform"
     region = "env"
     remove_one_point_only = False
     nb_bin = 20
 
-    # Function calls
-    frequency_bins, avg_proba_fix, all_traj_per_bin, all_fixed_per_bin, err_proba_fix = average_proba_fix(
-        patient_names, criteria, region, nb_bin, remove_one_point_only)
-    plot_average_proba(frequency_bins, avg_proba_fix, err_proba_fix, region, criteria)
+    # # Function calls
+    # frequency_bins, avg_proba_fix, all_traj_per_bin, all_fixed_per_bin, err_proba_fix = average_proba_fix(
+    #     patient_names, region, bin_type, nb_bin, remove_one_point_only)
+    # plot_average_proba(frequency_bins, avg_proba_fix, err_proba_fix, region, bin_type)
+
+    trajectories = []
+    for patient_name in patient_names:
+        patient = Patient.load(patient_name)
+        aft = patient.get_allele_frequency_trajectories(region)
+        trajectories = trajectories + trajectory.create_trajectory_list(patient, region, aft)
+
+    tmp = len(trajectories)
+    nb_per_bin = tmp // nb_bin
+    nb_remaining = tmp%nb_bin
+
+    frequency_bins = np.ones(nb_bin) * nb_per_bin
+    frequency_bins[:nb_remaining] += 1
+    # TODO: design non uniform been with approx. same nuber of traj in each
+    # Should probably plot the distribution of # traj in freq (as in traj_characterisation.py) and take the inverse density
