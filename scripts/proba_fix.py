@@ -6,6 +6,10 @@ import trajectory
 
 
 def get_proba_fix(trajectories, bin_filter="in", nb_bin=8, freq_range=[0.05, 0.95]):
+    """
+    Gives the probability of fixation in each frequency bin.
+    bin_filter="through" is biased, don't use it.
+    """
     if bin_filter not in ["in", "through"]:
         raise ValueError("bin_filter parameter must be 'in' or 'through'")
 
