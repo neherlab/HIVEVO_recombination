@@ -27,19 +27,20 @@ def plot_duration_distribution(time_bins, nb_traj, freq_min, fontsize=16):
 def plot_length_distribution(trajectory_list, freq_min, fontsize=16):
     plt.figure()
     plt.title(f"Trajectory length freq>{round(freq_min,1)}", fontsize=fontsize)
-    plt.hist([len(x.t) for x in trajectory_list], bins=range(aft.shape[0]), align="left", rwidth=0.7)
+    plt.hist([len(x.t) for x in trajectory_list], bins=range(12), align="left", rwidth=0.7)
     plt.xlabel("Length", fontsize=fontsize)
     plt.ylabel("#Trajectories", fontsize=fontsize)
 
 
 if __name__ == "__main__":
-
-    patient_name = "p1"
-    patient = Patient.load(patient_name)
+    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
     region = "env"
+    trajectories = []
 
-    aft = patient.get_allele_frequency_trajectories(region)
-    trajectories = create_trajectory_list(patient, region, aft)
+    for patient_name in patient_names:
+        patient = Patient.load(patient_name)
+        aft = patient.get_allele_frequency_trajectories(region)
+        trajectories = trajectories + create_trajectory_list(patient, region, aft)
 
     ### Trajectory durations ###
     for freq_min in np.arange(0, 1, 0.2):
@@ -47,9 +48,10 @@ if __name__ == "__main__":
         time_bins, nb_traj = get_duration_distribution(filtered_traj)
         plot_duration_distribution(time_bins, nb_traj, freq_min)
 
+
     ### Trajectory lengths ###
-    for freq_min in np.arange(0, 1, 0.2):
-        filtered_traj = [x for x in trajectories if np.sum(x.frequencies > freq_min, dtype=bool)]
-        plot_length_distribution(filtered_traj, freq_min)
+    # for freq_min in np.arange(0, 1, 0.2):
+    #     filtered_traj = [x for x in trajectories if np.sum(x.frequencies > freq_min, dtype=bool)]
+    #     plot_length_distribution(filtered_traj, freq_min)
 
     plt.show()

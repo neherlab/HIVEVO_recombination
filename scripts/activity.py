@@ -92,7 +92,7 @@ def plot_average_activity(region, time_bins, fixed, lost, active, sum, fontsize=
 
 
 if __name__ == "__main__":
-    patient_names = ["p1", "p2", "p4", "p5", "p6", "p8", "p9", "p11"]
+    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
     region = "env"
     normalize = True
     remove_one_point_traj = False
