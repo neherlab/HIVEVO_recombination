@@ -67,12 +67,12 @@ def fit_distribution(frequency_bins, nb_in):
     return fit[0]
 
 
-def get_nonuniform_bins(nb_bins, fit_params=None, bin_range=[0.05, 0.95]):
+def get_nonuniform_bins(nb_bins, fit_params=[], bin_range=[0.05, 0.95]):
     "Return the non_uniform bin edges that try to keep the number of trajectories in each bin constant"
     def f(x, alpha, beta, gamma):
         return alpha * np.exp(-beta * x) + gamma
 
-    if fit_params == None:
+    if fit_params == []:
         fit_params = [1418.92030293, 13.19671385, 85.01982428] # comes from fit of the distribution over 40 bins
 
     x = np.linspace(bin_range[0], bin_range[1], nb_bins + 1)
