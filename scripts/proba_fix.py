@@ -87,6 +87,17 @@ def plot_average_proba(freq_bin, proba_fix, err_proba_fix, region, bin_type, fon
     plt.legend(fontsize=fontsize)
     plt.show()
 
+def get_nonuniform_bins(nb_bins, type="quadra", bin_range=[0.05, 0.95]):
+    if type not in ["quadra", "log"]:
+        raise ValueError("Type of bins must be either quadra or log.")
+
+    if type == "quadra":
+        bins = np.linspace(bin_range[0], bin_range[1], nb_bins + 1)
+        non_uniform_bins = bins * bins
+        return non_uniform_bins
+    elif type == "log":
+        return np.logspace(np.log10(bin_range[0]), np.log10(bin_range[1]), nb_bins + 1)
+
 
 if __name__ == "__main__":
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
