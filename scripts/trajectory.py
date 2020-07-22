@@ -7,7 +7,7 @@ import tools
 
 class Trajectory():
     def __init__(self, frequencies, t, date, t_last_sample, fixation, threshold_low, threshold_high,
-                 patient, region, position, nucleotide):
+                 patient, region, position, nucleotide, synonymous):
 
         self.frequencies = frequencies              # Numpy 1D vector
         self.t = t                                  # Numpy 1D vector (in days)
@@ -21,12 +21,13 @@ class Trajectory():
         self.region = region                        # Region name, string
         self.position = position                    # Position on the region (int)
         self.nucleotide = nucleotide                # Nucleotide number according to HIVEVO_access/hivevo/sequence alpha
+        self.synonymous = synonymous                # True if this trajectory is part of synonymous mutation
 
     def __repr__(self):
         return str(self.__dict__)
 
 
-def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_high=0.99):
+def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_high=0.99, syn_constrained=False):
     """
     Creates a list of trajectories from a patient allele frequency trajectory (aft).
     Select the maximal amount of trajectories:
@@ -83,6 +84,8 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
     new_trajectory_filter[stop_at_masked_restart] = False
     trajectory_stop_filter[np.roll(stop_at_masked_restart, -1, 0)] = False
 
+    syn_mutations = patient.get_syn_mutations(region, mask_constrained=syn_constrained)
+
     date = patient.dsi[0]
     time = patient.dsi - date
     # iterate though all columns (<=> mutations trajectories)
@@ -111,8 +114,10 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
             else:
                 fixation = "lost"
 
+            position = coordinates[0, ii, 1]
+            nucleotide = coordinates[0, ii, 0]
             traj = Trajectory(np.ma.array(freqs), t - t[0], date + t[0], time[-1] - t[0], fixation, threshold_low, threshold_high, patient.name, region,
-                              position=coordinates[0, ii, 1], nucleotide=coordinates[0, ii, 0])
+                              position=position, nucleotide=nucleotide, synonymous=syn_mutations[nucleotide, position])
             trajectories = trajectories + [traj]
     return trajectories
 

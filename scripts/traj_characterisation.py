@@ -65,11 +65,19 @@ if __name__ == "__main__":
         aft = patient.get_allele_frequency_trajectories(region)
         trajectories = trajectories + create_trajectory_list(patient, region, aft)
 
+    syn_traj = [traj for traj in trajectories if traj.synonymous == True]
+    non_syn_traj = [traj for traj in trajectories if traj.synonymous == False]
+
     ### Trajectory durations ###
-    # for freq_min in np.arange(0, 1, 0.2):
-    #     filtered_traj = [traj for traj in trajectories if np.sum(traj.frequencies > freq_min, dtype=bool)]
-    #     time_bins, nb_traj = get_duration_distribution(filtered_traj)
-    #     plot_duration_distribution(time_bins, nb_traj, freq_min)
+    for freq_min in np.arange(0, 1, 0.2):
+        filtered_syn = [traj for traj in syn_traj if np.sum(traj.frequencies > freq_min, dtype=bool)]
+        filtered_non_syn = [traj for traj in non_syn_traj if np.sum(traj.frequencies > freq_min, dtype=bool)]
+        time_bins, nb_syn = get_duration_distribution(filtered_syn)
+        time_bins, nb_non_syn = get_duration_distribution(filtered_non_syn)
+        plot_duration_distribution(time_bins, nb_syn, freq_min)
+        plt.plot(time_bins, nb_non_syn, freq_min, label="non_syn")
+    plt.legend()
+    plt.show()
 
     ### Trajectory lengths ###
     # for freq_min in np.arange(0, 1, 0.2):
@@ -77,18 +85,44 @@ if __name__ == "__main__":
     #     plot_length_distribution(filtered_traj, freq_min)
 
     ### Number of trajectory seen in frequency bin ###
-    from proba_fix import get_nonuniform_bins
+    # from proba_fix import get_nonuniform_bins
+    #
+    # for nb_bin in [10, 20, 30]:
+    #     non_uniform_bins = get_nonuniform_bins(nb_bin, type="quadra")
+    #     nb_in = []
+    #     for ii in range(len(non_uniform_bins) - 1):
+    #         nb = len([traj for traj in trajectories if np.sum(np.logical_and(
+    #             traj.frequencies >= non_uniform_bins[ii], traj.frequencies < non_uniform_bins[ii + 1]), dtype=bool)])
+    #         nb_in = nb_in + [nb]
+    #
+    #     non_uniform_bins = 0.5 * (non_uniform_bins[:-1] + non_uniform_bins[1:])
+    #
+    #     plt.plot(non_uniform_bins, nb_in, label=f"{nb_bin} bins quadra")
+    # plt.legend()
+    # plt.show()
 
-    for nb_bin in [10, 20, 30]:
-        non_uniform_bins = get_nonuniform_bins(nb_bin, type="quadra")
-        nb_in = []
-        for ii in range(len(non_uniform_bins) - 1):
-            nb = len([traj for traj in trajectories if np.sum(np.logical_and(
-                traj.frequencies >= non_uniform_bins[ii], traj.frequencies < non_uniform_bins[ii + 1]), dtype=bool)])
-            nb_in = nb_in + [nb]
-
-        non_uniform_bins = 0.5 * (non_uniform_bins[:-1] + non_uniform_bins[1:])
-
-        plt.plot(non_uniform_bins, nb_in, label=f"{nb_bin} bins quadra")
-    plt.legend()
-    plt.show()
+    ### Synonymous and non-synonymous mutations ###
+    # from proba_fix import get_nonuniform_bins
+    # nb_bin = 20
+    # non_uniform_bins = get_nonuniform_bins(nb_bin)
+    # nb_syn = []
+    # nb_non_syn = []
+    # syn_traj = [traj for traj in trajectories if traj.synonymous == True]
+    # non_syn_traj = [traj for traj in trajectories if traj.synonymous == False]
+    # for ii in range(len(non_uniform_bins) - 1):
+    #     nb_s = len([traj for traj in syn_traj if np.sum(np.logical_and(
+    #         traj.frequencies >= non_uniform_bins[ii], traj.frequencies < non_uniform_bins[ii + 1]), dtype=bool)])
+    #     nb_ns = len([traj for traj in non_syn_traj if np.sum(np.logical_and(
+    #         traj.frequencies >= non_uniform_bins[ii], traj.frequencies < non_uniform_bins[ii + 1]), dtype=bool)])
+    #
+    #     nb_syn = nb_syn + [nb_s]
+    #     nb_non_syn = nb_non_syn + [nb_ns]
+    #
+    # non_uniform_bins = 0.5 * (non_uniform_bins[:-1] + non_uniform_bins[1:])
+    #
+    # plt.plot(non_uniform_bins, nb_syn, label="Synonymous")
+    # plt.plot(non_uniform_bins, nb_non_syn, label="Non synonymous")
+    # plt.legend()
+    # plt.xlabel("Frequency")
+    # plt.ylabel("# Trajectory")
+    # plt.show()
