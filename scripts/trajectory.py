@@ -131,6 +131,19 @@ def filter(trajectory_list, filter_str):
     return [traj for traj in trajectory_list if eval(filter_str)]
 
 
+def create_all_patient_trajectories(region, patient_names=[]):
+    if patient_names == []:
+        patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
+
+    trajectories = []
+    for patient_name in patient_names:
+        patient = Patient.load(patient_name)
+        aft = patient.get_allele_frequency_trajectories(region)
+        trajectories = trajectories + create_trajectory_list(patient, region, aft)
+
+    return trajectories
+
+
 if __name__ == "__main__":
     patient = Patient.load("p3")
     aft = patient.get_allele_frequency_trajectories("env")

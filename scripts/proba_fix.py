@@ -15,7 +15,6 @@ def get_proba_fix(trajectories, nb_bin=8, bin_type="uniform", freq_range=[0.05, 
     if bin_type == "uniform":
         frequency_bins = np.linspace(freq_range[0], freq_range[1], nb_bin)
     elif bin_type == "nonuniform":
-        from traj_characterisation import get_nonuniform_bins
         frequency_bins = get_nonuniform_bins(nb_bin, bin_range=freq_range)
 
     trajectories = [traj for traj in trajectories if traj.fixation != "active"]  # Remove active trajectories
@@ -38,8 +37,9 @@ def get_proba_fix(trajectories, nb_bin=8, bin_type="uniform", freq_range=[0.05, 
             proba_fix = proba_fix + [None]
 
     frequency_bins = 0.5 * (frequency_bins[:-1] + frequency_bins[1:])
+    err_proba_fix = np.array(proba_fix) * np.sqrt(1 / (np.array(fixed_per_bin) + 1e-10) + 1 / np.array(traj_per_bin))
 
-    return frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin
+    return frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin, err_proba_fix
 
 
 def plot_proba_fix(patient, region, frequency_bins, proba_fix, traj, fixed, lost, criteria, fontsize=16):
@@ -60,23 +60,6 @@ def plot_proba_fix(patient, region, frequency_bins, proba_fix, traj, fixed, lost
     plt.show()
 
 
-def average_proba_fix(patient_names, region, bin_type="uniform", nb_bin=10, remove_one_point_traj=False):
-    # Combining all the trajectories
-    trajectories = []
-    for patient_name in patient_names:
-        patient = Patient.load(patient_name)
-        aft = patient.get_allele_frequency_trajectories(region)
-        trajectories = trajectories + trajectory.create_trajectory_list(patient, region, aft)
-
-    # Computing proba and error
-    frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin = get_proba_fix(
-        trajectories, nb_bin, bin_type)
-
-    err_proba_fix = np.array(proba_fix) * np.sqrt(1 / np.array(fixed_per_bin) + 1 / np.array(traj_per_bin))
-
-    return frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, err_proba_fix
-
-
 def plot_average_proba(freq_bin, proba_fix, err_proba_fix, region, bin_type, fontsize=16):
     plt.figure(figsize=(10, 8))
     plt.title(f"Average P_fix region {region} " + bin_type + " bin", fontsize=fontsize)
@@ -87,7 +70,8 @@ def plot_average_proba(freq_bin, proba_fix, err_proba_fix, region, bin_type, fon
     plt.legend(fontsize=fontsize)
     plt.show()
 
-def get_nonuniform_bins(nb_bins, type="quadra", bin_range=[0.05, 0.95]):
+
+def get_nonuniform_bins(nb_bins, type="log", bin_range=[0.05, 0.95]):
     if type not in ["quadra", "log"]:
         raise ValueError("Type of bins must be either quadra or log.")
 
@@ -105,7 +89,23 @@ if __name__ == "__main__":
     region = "env"
     remove_one_point_only = False
     nb_bin = 10
+    fontsize = 16
 
-    frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, err_proba_fix = average_proba_fix(
-        patient_names, region, bin_type, nb_bin, remove_one_point_only)
-    plot_average_proba(frequency_bins, proba_fix, err_proba_fix, region, bin_type)
+    trajectories = trajectory.create_all_patient_trajectories(region)
+    syn_traj = [traj for traj in trajectories if traj.synonymous == True]
+    non_syn_traj = [traj for traj in trajectories if traj.synonymous == False]
+
+    bins, proba_fix_syn, _, _, _, err_proba_fix_syn = get_proba_fix(syn_traj, nb_bin, bin_type)
+    bins, proba_fix_non_syn, _, _, _, err_proba_fix_non_syn = get_proba_fix(non_syn_traj, nb_bin, bin_type)
+
+    plt.figure(figsize=(10, 8))
+    plt.title(f"Average P_fix region {region} " + bin_type + " bin", fontsize=fontsize)
+    plt.ylabel(r"$P_{fix}$", fontsize=fontsize)
+    plt.xlabel("Frequency", fontsize=fontsize)
+    plt.errorbar(bins, proba_fix_syn, yerr=err_proba_fix_syn, fmt='.-', label="Syn")
+    plt.errorbar(bins, proba_fix_non_syn, yerr=err_proba_fix_non_syn, fmt='.-', label="Non_syn")
+    plt.plot([0, 1], [0, 1], 'k--', label="neutral expectation")
+    plt.legend(fontsize=fontsize)
+    plt.xlim([0,1])
+    plt.ylim([0,1])
+    plt.show()
