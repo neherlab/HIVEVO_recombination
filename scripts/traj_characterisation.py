@@ -68,21 +68,25 @@ if __name__ == "__main__":
     syn_traj = [traj for traj in trajectories if traj.synonymous == True]
     non_syn_traj = [traj for traj in trajectories if traj.synonymous == False]
 
-    ### Trajectory durations ###
+    # ### Trajectory durations ###
+    # for freq_min in np.arange(0, 1, 0.2):
+    #     filtered_syn = [traj for traj in syn_traj if np.sum(traj.frequencies > freq_min, dtype=bool)]
+    #     filtered_non_syn = [traj for traj in non_syn_traj if np.sum(traj.frequencies > freq_min, dtype=bool)]
+    #     time_bins, nb_syn = get_duration_distribution(filtered_syn)
+    #     time_bins, nb_non_syn = get_duration_distribution(filtered_non_syn)
+    #     plot_duration_distribution(time_bins, nb_syn, freq_min)
+    #     plt.plot(time_bins, nb_non_syn, freq_min, label="non_syn")
+    #     plt.legend()
+    # plt.show()
+
+    ### Trajectory lengths ###
     for freq_min in np.arange(0, 1, 0.2):
         filtered_syn = [traj for traj in syn_traj if np.sum(traj.frequencies > freq_min, dtype=bool)]
         filtered_non_syn = [traj for traj in non_syn_traj if np.sum(traj.frequencies > freq_min, dtype=bool)]
-        time_bins, nb_syn = get_duration_distribution(filtered_syn)
-        time_bins, nb_non_syn = get_duration_distribution(filtered_non_syn)
-        plot_duration_distribution(time_bins, nb_syn, freq_min)
-        plt.plot(time_bins, nb_non_syn, freq_min, label="non_syn")
-    plt.legend()
+        plot_length_distribution(filtered_non_syn, freq_min)
+        plt.hist([len(x.t) for x in filtered_syn], bins=range(12), align="left", rwidth=0.7, label="Syn")
+        plt.legend()
     plt.show()
-
-    ### Trajectory lengths ###
-    # for freq_min in np.arange(0, 1, 0.2):
-    #     filtered_traj = [x for x in trajectories if np.sum(x.frequencies > freq_min, dtype=bool)]
-    #     plot_length_distribution(filtered_traj, freq_min)
 
     ### Number of trajectory seen in frequency bin ###
     # from proba_fix import get_nonuniform_bins
