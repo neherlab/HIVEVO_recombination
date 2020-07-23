@@ -1,4 +1,4 @@
-from trajectory import Trajectory, create_trajectory_list, filter
+from trajectory import Trajectory, create_trajectory_list, filter, create_all_patient_trajectories
 from hivevo.patients import Patient
 import filenames
 import matplotlib.pyplot as plt
@@ -91,11 +91,61 @@ def plot_average_activity(region, time_bins, fixed, lost, active, sum, fontsize=
     plt.show()
 
 
+def get_average_activity(trajectories, normalize=False, remove_one_point_traj=False, min_freq=0.2):
+    time_bins = np.linspace(0, 2000, 30)
+    filtered_traj = [traj for traj in trajectories if np.sum(traj.frequencies > min_freq, dtype=bool)]
+    if remove_one_point_traj:
+        filtered_traj = [traj for traj in filtered_traj if traj.t[-1] > 0]  # Remove 1 point only trajectories
+
+    filtered_fixed = [traj for traj in filtered_traj if traj.fixation == "fixed"]
+    filtered_lost = [traj for traj in filtered_traj if traj.fixation == "lost"]
+    filtered_active = [traj for traj in filtered_traj if traj.fixation == "active"]
+    fixed, lost, active = [], [], []
+
+    for ii in range(len(time_bins)):
+        nb_fixed = len([traj for traj in filtered_fixed if traj.t[-1] < time_bins[ii]])
+        nb_lost = len([traj for traj in filtered_lost if traj.t[-1] < time_bins[ii]])
+        nb_active = len([traj for traj in filtered_traj if traj.t[-1] >= time_bins[ii]])
+        # not adding len([traj for traj in filtered_active if traj.t[-1] < time_bins[ii]]) because we don't know how long they stay active as they are from last timepoint
+
+        fixed = fixed + [nb_fixed]
+        lost = lost + [nb_lost]
+        active = active + [nb_active]
+
+    sum = np.array(fixed) + np.array(lost) + np.array(active)
+
+    if normalize:
+        fixed = np.array(fixed) / sum
+        lost = np.array(lost) / sum
+        active = np.array(active) / sum
+        sum = np.ones_like(fixed)
+    return time_bins, fixed, lost, active, sum
+
+
 if __name__ == "__main__":
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
     region = "env"
     normalize = True
-    remove_one_point_traj = False
+    remove_one_point_traj = True
+    fontsize=16
 
-    time_bins, fixed, lost, active, sum = average_activity(patient_names, region, normalize, remove_one_point_traj)
-    plot_average_activity(region, time_bins, fixed, lost, active, sum)
+    trajectories = create_all_patient_trajectories(region)
+    traj_syn = [traj for traj in trajectories if traj.synonymous == True]
+    traj_non_syn = [traj for traj in trajectories if traj.synonymous == False]
+    bins, syn_fixed, syn_lost, syn_active, syn_sum = get_average_activity(traj_syn, normalize, remove_one_point_traj)
+    _, non_syn_fixed, non_syn_lost, non_syn_active, non_syn_sum = get_average_activity(traj_non_syn, normalize, remove_one_point_traj)
+
+
+    plt.figure(figsize=(10,8))
+    plt.title(f"Average activity region {region}", fontsize=fontsize)
+    plt.plot(bins, syn_fixed, label="syn_fixed")
+    plt.plot(bins, syn_lost, label="syn_lost")
+    plt.plot(bins, syn_active, label="syn_active")
+    plt.plot(bins, non_syn_fixed, label="non_syn_fixed")
+    plt.plot(bins, non_syn_lost, label="non_syn_lost")
+    plt.plot(bins, non_syn_active, label="non_syn_active")
+    plt.legend(fontsize=fontsize)
+    plt.xlabel("Time [days]", fontsize=fontsize)
+    plt.ylabel("# Trajectories", fontsize=fontsize)
+    plt.grid()
+    plt.show()
