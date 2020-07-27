@@ -47,8 +47,8 @@ def get_mean_in_time(trajectories, nb_bins=15, freq_range=[0.4, 0.6]):
 
 
 if __name__ == "__main__":
-    # patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    patient_names = ["p1"]
+    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
+    # patient_names = ["p1"]
     region = "env"
     nb_bins = 15
     freq_range = [0.4, 0.6]
@@ -60,3 +60,12 @@ if __name__ == "__main__":
 
     time_bins, mean_syn = get_mean_in_time(syn_traj, nb_bins, freq_range)
     time_bins, mean_non_syn = get_mean_in_time(non_syn_traj, nb_bins, freq_range)
+
+    plt.figure()
+    plt.plot(time_bins, mean_syn, '.-', label="Synonymous")
+    plt.plot(time_bins, mean_non_syn, '.-', label="Non-synonymous")
+    plt.xlabel("Time [days]", fontsize=fontsize)
+    plt.ylabel("Frequency", fontsize=fontsize)
+    plt.legend(fontsize=fontsize)
+    plt.ylim([0,1])
+    plt.show()
