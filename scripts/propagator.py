@@ -28,7 +28,7 @@ def get_mean_in_time(trajectories, nb_bins=15, freq_range=[0.4, 0.6]):
         f_traj = np.concatenate((f_traj, traj.frequencies))
 
     # Binning of all the data in the time bins
-    filtered_fixed = [traj for traj in trajectories if traj.fixation == "fixed"]
+    filtered_fixed = [traj for traj in traj ectories if traj.fixation == "fixed"]
     filtered_lost = [traj for traj in trajectories if traj.fixation == "lost"]
     freqs, fixed, lost = [], [], []
     for ii in range(len(time_bins) - 1):
@@ -43,7 +43,10 @@ def get_mean_in_time(trajectories, nb_bins=15, freq_range=[0.4, 0.6]):
         mean = mean + [np.sum(freqs[ii]) + fixed[ii]]
         mean[-1] /= (len(freqs[ii]) + fixed[ii] + lost[ii])
 
-    return 0.5 * (time_bins[1:] + time_bins[:-1]), mean
+    nb_active = [len(freq) for freq in freqs]
+    nb_dead = [fixed[ii] + lost[ii] for ii in range(len(fixed))]
+
+    return 0.5 * (time_bins[1:] + time_bins[:-1]), mean, nb_active, nb_dead
 
 
 if __name__ == "__main__":
@@ -58,8 +61,8 @@ if __name__ == "__main__":
     syn_traj = copy.deepcopy([traj for traj in trajectories if traj.synonymous == True])
     non_syn_traj = copy.deepcopy([traj for traj in trajectories if traj.synonymous == False])
 
-    time_bins, mean_syn = get_mean_in_time(syn_traj, nb_bins, freq_range)
-    time_bins, mean_non_syn = get_mean_in_time(non_syn_traj, nb_bins, freq_range)
+    time_bins, mean_syn, active_syn, dead_syn = get_mean_in_time(syn_traj, nb_bins, freq_range)
+    time_bins, mean_non_syn, active_non_syn, dead_non_syn = get_mean_in_time(non_syn_traj, nb_bins, freq_range)
 
     plt.figure()
     plt.plot(time_bins, mean_syn, '.-', label="Synonymous")
@@ -68,4 +71,13 @@ if __name__ == "__main__":
     plt.ylabel("Frequency", fontsize=fontsize)
     plt.legend(fontsize=fontsize)
     plt.ylim([0,1])
+
+    plt.figure()
+    plt.plot(time_bins, active_syn, '.-', label="active_syn")
+    plt.plot(time_bins, dead_syn, '.-', label="dead_syn")
+    plt.plot(time_bins, active_non_syn, '.-', label="active_non_syn")
+    plt.plot(time_bins, dead_non_syn, '.-', label="dead_non_syn")
+    plt.xlabel("Time [days]", fontsize=fontsize)
+    plt.ylabel("# of trajectory", fontsize=fontsize)
+    plt.legend(fontsize=fontsize)
     plt.show()
