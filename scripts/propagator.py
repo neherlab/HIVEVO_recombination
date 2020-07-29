@@ -62,7 +62,8 @@ if __name__ == "__main__":
     non_syn_traj = copy.deepcopy([traj for traj in trajectories if traj.synonymous == False])
 
     time_bins, mean_syn, active_syn, dead_syn = get_mean_in_time(syn_traj, nb_bins, freq_range)
-    time_bins, mean_non_syn, active_non_syn, dead_non_syn = get_mean_in_time(non_syn_traj, nb_bins, freq_range)
+    time_bins, mean_non_syn, active_non_syn, dead_non_syn = get_mean_in_time(
+        non_syn_traj, nb_bins, freq_range)
 
     plt.figure()
     plt.plot(time_bins, mean_syn, '.-', label="Synonymous")
@@ -70,7 +71,7 @@ if __name__ == "__main__":
     plt.xlabel("Time [days]", fontsize=fontsize)
     plt.ylabel("Frequency", fontsize=fontsize)
     plt.legend(fontsize=fontsize)
-    plt.ylim([0,1])
+    plt.ylim([0, 1])
 
     plt.figure()
     plt.plot(time_bins, active_syn, '.-', label="active_syn")
