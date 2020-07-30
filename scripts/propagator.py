@@ -28,7 +28,7 @@ def get_mean_in_time(trajectories, nb_bins=15, freq_range=[0.4, 0.6]):
         f_traj = np.concatenate((f_traj, traj.frequencies))
 
     # Binning of all the data in the time bins
-    filtered_fixed = [traj for traj in traj ectories if traj.fixation == "fixed"]
+    filtered_fixed = [traj for traj in trajectories if traj.fixation == "fixed"]
     filtered_lost = [traj for traj in trajectories if traj.fixation == "lost"]
     freqs, fixed, lost = [], [], []
     for ii in range(len(time_bins) - 1):
@@ -58,6 +58,7 @@ if __name__ == "__main__":
     fontsize = 16
 
     trajectories = create_all_patient_trajectories(region, patient_names)
+    trajectories = [traj for traj in trajectories if traj.t[-1] != 0]
     syn_traj = copy.deepcopy([traj for traj in trajectories if traj.synonymous == True])
     non_syn_traj = copy.deepcopy([traj for traj in trajectories if traj.synonymous == False])
 

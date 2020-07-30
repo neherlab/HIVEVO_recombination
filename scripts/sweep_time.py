@@ -6,7 +6,7 @@ import numpy as np
 
 
 if __name__ == "__main__":
-    region = "env"
+    region = "pol"
     fontsize = 16
     nb_bin = 30
 
