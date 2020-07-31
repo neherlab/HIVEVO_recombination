@@ -144,6 +144,32 @@ def create_all_patient_trajectories(region, patient_names=[]):
     return trajectories
 
 
+def get_fragment_per_site(patient, region):
+    """
+    Returns a list of fragment associated to each position in the region.
+    """
+    fragment_list = [[]] * len(patient._region_to_indices(region))
+    frag = patient._annotation_to_fragment_indices(region)
+
+    for ii in range(len(fragment_list)):
+        for frag_name in [*frag][2:]:
+            if ii in frag[frag_name][0]:
+                fragment_list[ii] = fragment_list[ii] + [frag_name]
+    return fragment_list
+
+
+
+
+def get_depth(patient, region):
+    """
+    Returns the associated depth for each position in the region.
+    """
+
+    return True
+
+
+
+
 if __name__ == "__main__":
     patient = Patient.load("p3")
     aft = patient.get_allele_frequency_trajectories("env")
