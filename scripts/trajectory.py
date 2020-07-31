@@ -150,24 +150,30 @@ def get_fragment_per_site(patient, region):
     """
     fragment_list = [[]] * len(patient._region_to_indices(region))
     frag = patient._annotation_to_fragment_indices(region)
+    fragment_names = [*frag][2:]
 
     for ii in range(len(fragment_list)):
-        for frag_name in [*frag][2:]:
+        for frag_name in fragment_names:
             if ii in frag[frag_name][0]:
                 fragment_list[ii] = fragment_list[ii] + [frag_name]
-    return fragment_list
 
+    return fragment_list, fragment_names
 
+def get_fragment_depth(patient, fragment):
+    "Returns the depth of the fragment for each time point."
+    return [s[fragment] for s in patient.samples]
 
 
 def get_depth(patient, region):
     """
     Returns the associated depth for each position in the region.
     """
+    fragments, fragment_names = get_fragment_per_site(patient, region)
+    fragment_depths = [get_fragment_depth(patient, frag) for frag in fragment_names]
+    # TODO: take it back from here, build a time_samples*region_size matrix with the depths at each point
+    breakpoint()
 
     return True
-
-
 
 
 if __name__ == "__main__":
