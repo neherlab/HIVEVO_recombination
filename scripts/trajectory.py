@@ -159,9 +159,27 @@ def get_fragment_per_site(patient, region):
 
     return fragment_list, fragment_names
 
+
 def get_fragment_depth(patient, fragment):
     "Returns the depth of the fragment for each time point."
     return [s[fragment] for s in patient.samples]
+
+
+def associate_depth(fragments, fragment_depths, fragment_names):
+    "Associate a bolean array (true where coverage is ok) to each positions of the region."
+    bool_frag_depths = np.array(fragment_depths) == "ok"
+    depths = []
+    for ii in range(len(fragments)):
+        if len(fragments[ii]) == 1:  # Site only belongs to 1 fragment
+            depths += [bool_frag_depths[np.where(np.array(fragment_names) == fragments[ii][0])[0][0]]]
+        elif len(fragments[ii]) == 2:  # Site belongs to 2 fragments => take the best coverage
+            depth1 = bool_frag_depths[np.where(np.array(fragment_names) == fragments[ii][0])[0][0]]
+            depth2 = bool_frag_depths[np.where(np.array(fragment_names) == fragments[ii][1])[0][0]]
+            depths += [np.logical_or(depth1, depth2)]
+        else:
+            raise(ValueError("Number of fragments for each site must be either 1 or 2."))
+
+    return np.swapaxes(np.array(depths), 0, 1)
 
 
 def get_depth(patient, region):
@@ -170,10 +188,7 @@ def get_depth(patient, region):
     """
     fragments, fragment_names = get_fragment_per_site(patient, region)
     fragment_depths = [get_fragment_depth(patient, frag) for frag in fragment_names]
-    # TODO: take it back from here, build a time_samples*region_size matrix with the depths at each point
-    breakpoint()
-
-    return True
+    return associate_depth(fragments, fragment_depths, fragment_names)
 
 
 if __name__ == "__main__":
