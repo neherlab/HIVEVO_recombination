@@ -12,5 +12,3 @@ fontsize = 16
 patient = Patient.load(patient_name)
 aft = patient.get_allele_frequency_trajectories(region)
 trajectories = create_trajectory_list(patient, region, aft)
-
-depth = get_depth(patient, region)

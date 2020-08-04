@@ -35,9 +35,15 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
         - trajectories are either active, extinct or fixed after the last time point, which is specified
         - a trajectory can be as small as 1 point (extinct->active->fixed, or extinct->active->exctinct)
         - several trajectories can come from a single aft (for ex. extinct->active->extinct->active->fixed)
-        - masked datapoints are included only if in the middle of a trajectory (ie. [0.2, --, 0.6] is kept, but [--, 0.2, 0] gives [0.2] and [0.5, --, 1] gives [0.5])
+        - masked datapoints (low depth / coverage) are included only if in the middle of a trajectory (ie. [0.2, --, 0.6] is kept, but [--, 0.2, 0] gives [0.2] and [0.5, --, 1] gives [0.5])
     """
     trajectories = []
+    # Adding masking for low depth fragments
+    depth = get_depth(patient, region)
+    depth = np.tile(depth, (6, 1, 1))
+    depth = np.swapaxes(depth, 0, 1)
+    aft.mask = np.logical_or(aft.mask, ~depth)
+
     # Exctract the full time series of af for mutations and place them in a 2D matrix as columns
     mutation_positions = tools.get_mutation_positions(patient, region, aft, threshold_low)
     region_mut_pos = np.sum(mutation_positions, axis=0, dtype=bool)
