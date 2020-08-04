@@ -184,7 +184,7 @@ def associate_depth(fragments, fragment_depths, fragment_names):
 
 def get_depth(patient, region):
     """
-    Returns the associated depth for each position in the region.
+    Returns nb_timepoint*nb_site boolean matrix where True are samples where the depth was labeled "ok" in the tsv files.
     """
     fragments, fragment_names = get_fragment_per_site(patient, region)
     fragment_depths = [get_fragment_depth(patient, frag) for frag in fragment_names]
