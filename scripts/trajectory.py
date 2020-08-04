@@ -198,6 +198,6 @@ def get_depth(patient, region):
 
 
 if __name__ == "__main__":
-    patient = Patient.load("p3")
-    aft = patient.get_allele_frequency_trajectories("env")
-    trajectories = create_trajectory_list(patient, "env", aft)
+    patient = Patient.load("p1")
+    aft = patient.get_allele_frequency_trajectories("genomewide")
+    trajectories = create_trajectory_list(patient, "genomewide", aft)
