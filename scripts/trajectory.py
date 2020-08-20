@@ -3,6 +3,7 @@ import copy
 import filenames
 from hivevo.patients import Patient
 import tools
+from hivevo.HIVreference import HIVreference
 
 
 class Trajectory():
@@ -197,7 +198,27 @@ def get_depth(patient, region):
     return associate_depth(fragments, fragment_depths, fragment_names)
 
 
+def filter_aft_for_trajectories(patient, region, aft, gap_treshold=0.1):
+    """
+    Filter for aft before creating the trajectory list.
+    """
+    ref = HIVreference(subtype="any")
+    map_to_ref = patient.map_to_external_reference(region)
+    ungapped_genomewide = ref.get_ungapped(gap_treshold)
+    ungapped_region = ungapped_genomewide[map_to_ref[:, 0]]
+
+    # excludes the positions that are not mapped to the reference (i.e. insertions as alignement is unreliable)
+    filtered = aft[:, :, np.in1d(np.arange(aft.shape[-1]), map_to_ref[:, 2])]
+    # excludes positions that are often gapped in the reference (i.e. where the alignement is unreliable)
+    filtered = filtered[:, :, ungapped_region]
+
+    return filtered
+
+
 if __name__ == "__main__":
+    region = "pol"
     patient = Patient.load("p1")
-    aft = patient.get_allele_frequency_trajectories("genomewide")
-    trajectories = create_trajectory_list(patient, "genomewide", aft)
+    aft = patient.get_allele_frequency_trajectories(region)
+    filtered_aft = filter_aft_for_trajectories(patient, region, aft)
+    trajectories = create_trajectory_list(patient, region, aft)
+    trajectories_filtered = create_trajectory_list(patient, region, filtered_aft)
