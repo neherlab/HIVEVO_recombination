@@ -45,6 +45,9 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
     depth = np.swapaxes(depth, 0, 1)
     aft.mask = np.logical_or(aft.mask, ~depth)
 
+    # Filter the aft to remove positions where there is no reference or seen to often gapped TODO
+    aft = aft[:,:, get_reference_filter(patient, region, aft)]
+
     # Exctract the full time series of af for mutations and place them in a 2D matrix as columns
     mutation_positions = tools.get_mutation_positions(patient, region, aft, threshold_low)
     region_mut_pos = np.sum(mutation_positions, axis=0, dtype=bool)
@@ -198,9 +201,9 @@ def get_depth(patient, region):
     return associate_depth(fragments, fragment_depths, fragment_names)
 
 
-def filter_aft_for_trajectories(patient, region, aft, gap_treshold=0.1):
+def get_reference_filter(patient, region, aft, gap_treshold=0.1):
     """
-    Filter for aft before creating the trajectory list.
+    Returns a 1D boolean vector where False are the positions (in aft.shape[-1]) that are unmapped to reference or too often gapped.
     """
     ref = HIVreference(subtype="any")
     map_to_ref = patient.map_to_external_reference(region)
@@ -208,17 +211,17 @@ def filter_aft_for_trajectories(patient, region, aft, gap_treshold=0.1):
     ungapped_region = ungapped_genomewide[map_to_ref[:, 0]]
 
     # excludes the positions that are not mapped to the reference (i.e. insertions as alignement is unreliable)
-    filtered = aft[:, :, np.in1d(np.arange(aft.shape[-1]), map_to_ref[:, 2])]
-    # excludes positions that are often gapped in the reference (i.e. where the alignement is unreliable)
-    filtered = filtered[:, :, ungapped_region]
+    mask1 = np.in1d(np.arange(aft.shape[-1]), map_to_ref[:, 2])
 
-    return filtered
+    # excludes positions that are often gapped in the reference (i.e. where the alignement is unreliable)
+    mask2 = np.in1d(np.arange(aft.shape[-1]), map_to_ref[ungapped_region,2])
+
+    return np.logical_and(mask1, mask2)
 
 
 if __name__ == "__main__":
     region = "pol"
     patient = Patient.load("p1")
     aft = patient.get_allele_frequency_trajectories(region)
-    filtered_aft = filter_aft_for_trajectories(patient, region, aft)
+    aft_mask = get_reference_filter(patient, region, aft)
     trajectories = create_trajectory_list(patient, region, aft)
-    trajectories_filtered = create_trajectory_list(patient, region, filtered_aft)
