@@ -209,12 +209,12 @@ def get_depth(patient, region):
     return associate_depth(fragments, fragment_depths, fragment_names)
 
 
-def get_reference_filter(patient, region, aft, ref, gap_treshold=0.1):
+def get_reference_filter(patient, region, aft, ref, gap_threshold=0.1):
     """
     Returns a 1D boolean vector where False are the positions (in aft.shape[-1]) that are unmapped to reference or too often gapped.
     """
     map_to_ref = patient.map_to_external_reference(region)
-    ungapped_genomewide = ref.get_ungapped(gap_treshold)
+    ungapped_genomewide = ref.get_ungapped(gap_threshold)
     ungapped_region = ungapped_genomewide[map_to_ref[:, 0]]
 
     # excludes the positions that are not mapped to the reference (i.e. insertions as alignement is unreliable)
