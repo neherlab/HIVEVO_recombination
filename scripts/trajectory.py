@@ -8,7 +8,7 @@ from hivevo.HIVreference import HIVreference
 
 class Trajectory():
     def __init__(self, frequencies, t, date, t_last_sample, fixation, threshold_low, threshold_high,
-                 patient, region, position, nucleotide, synonymous):
+                 patient, region, position, nucleotide, synonymous, reversion):
 
         self.frequencies = frequencies              # Numpy 1D vector
         self.t = t                                  # Numpy 1D vector (in days)
@@ -23,12 +23,14 @@ class Trajectory():
         self.position = position                    # Position on the region (int)
         self.nucleotide = nucleotide                # Nucleotide number according to HIVEVO_access/hivevo/sequence alpha
         self.synonymous = synonymous                # True if this trajectory is part of synonymous mutation
+        self.reversion = reversion                  # True if the trajectory is a reversion to consensus sequence
 
     def __repr__(self):
         return str(self.__dict__)
 
 
-def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_high=0.99, syn_constrained=False):
+def create_trajectory_list(patient, region, aft, ref, threshold_low=0.01, threshold_high=0.99,
+                           syn_constrained=False, gap_threshold=0.1):
     """
     Creates a list of trajectories from a patient allele frequency trajectory (aft).
     Select the maximal amount of trajectories:
@@ -45,14 +47,14 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
     depth = np.swapaxes(depth, 0, 1)
     aft.mask = np.logical_or(aft.mask, ~depth)
 
-
     # Exctract the full time series of af for mutations and place them in a 2D matrix as columns
     mutation_positions = tools.get_mutation_positions(patient, region, aft, threshold_low)
     region_mut_pos = np.sum(mutation_positions, axis=0, dtype=bool)
     # Mask to select positions where mutations are seen
     mask = np.tile(region_mut_pos, (aft.shape[0], 1, 1))
     # Mask to filter the aft in positions where there is no reference or seen to often gapped
-    reference_mask = np.tile(get_reference_filter(patient, region, aft), (aft.shape[0], aft.shape[1], 1))
+    reference_mask = np.tile(get_reference_filter(patient, region, aft, ref,
+                                                  gap_threshold), (aft.shape[0], aft.shape[1], 1))
     mask = np.logical_and(mask, reference_mask)
     mut_frequencies = aft[mask]
     mut_frequencies = np.reshape(mut_frequencies, (aft.shape[0], -1))  # each column is a different mutation
@@ -96,7 +98,9 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
     new_trajectory_filter[stop_at_masked_restart] = False
     trajectory_stop_filter[np.roll(stop_at_masked_restart, -1, 0)] = False
 
+    # Get boolean matrix to label trajectories as synonymous and/or reversion
     syn_mutations = patient.get_syn_mutations(region, mask_constrained=syn_constrained)
+    reversion_map = get_reversion_map(patient, region, aft, ref)
 
     date = patient.dsi[0]
     time = patient.dsi - date
@@ -128,8 +132,9 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
 
             position = coordinates[0, ii, 1]
             nucleotide = coordinates[0, ii, 0]
-            traj = Trajectory(np.ma.array(freqs), t - t[0], date + t[0], time[-1] - t[0], fixation, threshold_low, threshold_high, patient.name, region,
-                              position=position, nucleotide=nucleotide, synonymous=syn_mutations[nucleotide, position])
+            traj = Trajectory(np.ma.array(freqs), t - t[0], date + t[0], time[-1] - t[0], fixation, threshold_low,
+                              threshold_high, patient.name, region, position=position, nucleotide=nucleotide,
+                              synonymous=syn_mutations[nucleotide, position], reversion=reversion_map[nucleotide, position])
             trajectories = trajectories + [traj]
     return trajectories
 
@@ -148,10 +153,11 @@ def create_all_patient_trajectories(region, patient_names=[]):
         patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
 
     trajectories = []
+    ref = HIVreference(subtype="any")
     for patient_name in patient_names:
         patient = Patient.load(patient_name)
         aft = patient.get_allele_frequency_trajectories(region)
-        trajectories = trajectories + create_trajectory_list(patient, region, aft)
+        trajectories = trajectories + create_trajectory_list(patient, region, aft, ref)
 
     return trajectories
 
@@ -203,11 +209,10 @@ def get_depth(patient, region):
     return associate_depth(fragments, fragment_depths, fragment_names)
 
 
-def get_reference_filter(patient, region, aft, gap_treshold=0.1):
+def get_reference_filter(patient, region, aft, ref, gap_treshold=0.1):
     """
     Returns a 1D boolean vector where False are the positions (in aft.shape[-1]) that are unmapped to reference or too often gapped.
     """
-    ref = HIVreference(subtype="any")
     map_to_ref = patient.map_to_external_reference(region)
     ungapped_genomewide = ref.get_ungapped(gap_treshold)
     ungapped_region = ungapped_genomewide[map_to_ref[:, 0]]
@@ -216,14 +221,28 @@ def get_reference_filter(patient, region, aft, gap_treshold=0.1):
     mask1 = np.in1d(np.arange(aft.shape[-1]), map_to_ref[:, 2])
 
     # excludes positions that are often gapped in the reference (i.e. where the alignement is unreliable)
-    mask2 = np.in1d(np.arange(aft.shape[-1]), map_to_ref[ungapped_region,2])
+    mask2 = np.in1d(np.arange(aft.shape[-1]), map_to_ref[ungapped_region, 2])
 
     return np.logical_and(mask1, mask2)
+
+
+def get_reversion_map(patient, region, aft, ref):
+    """
+    Returns a 2D boolean matrix (nucleotide*patient_sequence_length) where True are the positions that
+    correspond to a reversion to the consensus sequence.
+    """
+    reversion_map = np.zeros((aft.shape[1], aft.shape[2]), dtype="bool")
+    map_to_ref = patient.map_to_external_reference(region)
+    ref_idx = ref.get_consensus_indices_in_patient_region(map_to_ref)
+
+    reversion_map[ref_idx, map_to_ref[:, 2]] = True
+    return reversion_map
 
 
 if __name__ == "__main__":
     region = "pol"
     patient = Patient.load("p1")
+    ref = HIVreference(subtype="any")
     aft = patient.get_allele_frequency_trajectories(region)
-    aft_mask = get_reference_filter(patient, region, aft)
-    trajectories = create_trajectory_list(patient, region, aft)
+    trajectories = create_trajectory_list(patient, region, aft, ref)
+    reversions = [traj for traj in trajectories if traj.reversion == True]
