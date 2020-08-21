@@ -45,13 +45,15 @@ def create_trajectory_list(patient, region, aft, threshold_low=0.01, threshold_h
     depth = np.swapaxes(depth, 0, 1)
     aft.mask = np.logical_or(aft.mask, ~depth)
 
-    # Filter the aft to remove positions where there is no reference or seen to often gapped TODO
-    aft = aft[:,:, get_reference_filter(patient, region, aft)]
 
     # Exctract the full time series of af for mutations and place them in a 2D matrix as columns
     mutation_positions = tools.get_mutation_positions(patient, region, aft, threshold_low)
     region_mut_pos = np.sum(mutation_positions, axis=0, dtype=bool)
+    # Mask to select positions where mutations are seen
     mask = np.tile(region_mut_pos, (aft.shape[0], 1, 1))
+    # Mask to filter the aft in positions where there is no reference or seen to often gapped
+    reference_mask = np.tile(get_reference_filter(patient, region, aft), (aft.shape[0], aft.shape[1], 1))
+    mask = np.logical_and(mask, reference_mask)
     mut_frequencies = aft[mask]
     mut_frequencies = np.reshape(mut_frequencies, (aft.shape[0], -1))  # each column is a different mutation
 
