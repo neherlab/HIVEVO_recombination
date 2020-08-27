@@ -239,7 +239,7 @@ def get_reversion_map(patient, region, aft, ref):
     reversion_map[ref_idx, map_to_ref[:, 2]] = True
     return reversion_map
 
-def get_fitness(patient, region, subtype="any"):
+def get_fitness(patient, region, aft, subtype="any"):
     """
     Returns a 1D vector (patient_sequence_length) with the fitness coefficient for each sites. Sites missing
     from the consensus sequence or without fitness associated are nans.
@@ -247,7 +247,11 @@ def get_fitness(patient, region, subtype="any"):
     filename = filenames.get_fitness_filename(region, subtype)
     data = pd.read_csv(filename, skiprows=[0], sep="\t")
     fitness_consensus = data["median"]
-    return fitness_consensus
+    map_to_ref = patient.map_to_external_reference(region)
+    fitness = np.empty(aft.shape[2])
+    fitness[:] = np.nan
+    fitness[map_to_ref[:,2]] = fitness_consensus[map_to_ref[:,0]-map_to_ref[0][0]]
+    return fitness
 
 
 if __name__ == "__main__":
