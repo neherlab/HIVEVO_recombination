@@ -9,7 +9,7 @@ from hivevo.HIVreference import HIVreference
 
 class Trajectory():
     def __init__(self, frequencies, t, date, t_last_sample, fixation, threshold_low, threshold_high,
-                 patient, region, position, nucleotide, synonymous, reversion):
+                 patient, region, position, nucleotide, synonymous, reversion, fitness):
 
         self.frequencies = frequencies              # Numpy 1D vector
         self.t = t                                  # Numpy 1D vector (in days)
@@ -25,6 +25,7 @@ class Trajectory():
         self.nucleotide = nucleotide                # Nucleotide number according to HIVEVO_access/hivevo/sequence alpha
         self.synonymous = synonymous                # True if this trajectory is part of synonymous mutation
         self.reversion = reversion                  # True if the trajectory is a reversion to consensus sequence
+        self.fitness = fitness                      # Associated fitness from the HIV_fitness pooled files
 
     def __repr__(self):
         return str(self.__dict__)
@@ -102,6 +103,7 @@ def create_trajectory_list(patient, region, aft, ref, threshold_low=0.01, thresh
     # Get boolean matrix to label trajectories as synonymous and/or reversion
     syn_mutations = patient.get_syn_mutations(region, mask_constrained=syn_constrained)
     reversion_map = get_reversion_map(patient, region, aft, ref)
+    seq_fitness = get_fitness(patient, region, aft) # to the "any" subtype by default
 
     date = patient.dsi[0]
     time = patient.dsi - date
@@ -135,7 +137,8 @@ def create_trajectory_list(patient, region, aft, ref, threshold_low=0.01, thresh
             nucleotide = coordinates[0, ii, 0]
             traj = Trajectory(np.ma.array(freqs), t - t[0], date + t[0], time[-1] - t[0], fixation, threshold_low,
                               threshold_high, patient.name, region, position=position, nucleotide=nucleotide,
-                              synonymous=syn_mutations[nucleotide, position], reversion=reversion_map[nucleotide, position])
+                              synonymous=syn_mutations[nucleotide, position], reversion=reversion_map[nucleotide, position],
+                              fitness=seq_fitness[position])
             trajectories = trajectories + [traj]
     return trajectories
 
