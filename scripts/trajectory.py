@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import copy
 import filenames
 from hivevo.patients import Patient
@@ -237,6 +238,16 @@ def get_reversion_map(patient, region, aft, ref):
 
     reversion_map[ref_idx, map_to_ref[:, 2]] = True
     return reversion_map
+
+def get_fitness(patient, region, subtype="any"):
+    """
+    Returns a 1D vector (patient_sequence_length) with the fitness coefficient for each sites. Sites missing
+    from the consensus sequence or without fitness associated are nans.
+    """
+    filename = filenames.get_fitness_filename(region, subtype)
+    data = pd.read_csv(filename, skiprows=[0], sep="\t")
+    fitness_consensus = data["median"]
+    return fitness_consensus
 
 
 if __name__ == "__main__":
