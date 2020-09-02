@@ -140,6 +140,9 @@ def create_trajectory_list(patient, region, aft, ref, threshold_low=0.01, thresh
                               synonymous=syn_mutations[nucleotide, position], reversion=reversion_map[nucleotide, position],
                               fitness_cost=seq_fitness[position])
             trajectories = trajectories + [traj]
+
+    # Quick and dirty fix to correct for trajectories that contain only masked data
+    trajectories = [traj for traj in trajectories if False in traj.frequencies.mask]
     return trajectories
 
 
