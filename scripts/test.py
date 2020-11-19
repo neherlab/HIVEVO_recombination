@@ -1,4 +1,5 @@
 # Adds link to the scripts folder
+from proba_fix import get_nonuniform_bins
 import tools
 from activity import get_average_activity
 import copy
@@ -12,52 +13,77 @@ import os
 sys.path.append("../scripts/")
 
 
-def get_mean_in_time(trajectories, nb_bins=15, freq_range=[0.4, 0.6]):
+def get_proba_fix(trajectories, nb_bin=8, freq_range=[0.1, 0.9]):
     """
-    Computes the mean frequency in time of a set of trajectories from the point they are seen in the freq_range window.
-    Returns the middle of the time bins and the computed frequency mean.
+    Gives the probability of fixation in each frequency bin.
     """
-    # Create bins and select trajectories going through the freq_range
-    time_bins = np.linspace(-1000, 2000, nb_bins)
-    trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
-        traj.frequencies >= freq_range[0], traj.frequencies < freq_range[1]), dtype=bool)]
 
-    # Offset trajectories to set t=0 at the point they are seen in the freq_range and adds all the frequencies / times
-    # to arrays for later computation of mean
-    t_traj = np.array([])
-    f_traj = np.array([])
-    for traj in trajectories:
-        idx = np.where(np.logical_and(traj.frequencies >=
-                                      freq_range[0], traj.frequencies < freq_range[1]))[0][0]
-        traj.t = traj.t - traj.t[idx]
-        t_traj = np.concatenate((t_traj, traj.t))
-        f_traj = np.concatenate((f_traj, traj.frequencies))
+    frequency_bins = get_nonuniform_bins(nb_bin, bin_range=freq_range)
 
-    # Binning of all the data in the time bins
-    filtered_fixed = [traj for traj in trajectories if traj.fixation == "fixed"]
-    filtered_lost = [traj for traj in trajectories if traj.fixation == "lost"]
-    freqs, fixed, lost = [], [], []
-    for ii in range(len(time_bins) - 1):
-        freqs = freqs + [f_traj[np.logical_and(t_traj >= time_bins[ii], t_traj < time_bins[ii + 1])]]
-        fixed = fixed + [len([traj for traj in filtered_fixed if traj.t[-1] < time_bins[ii]])]
-        lost = lost + [len([traj for traj in filtered_lost if traj.t[-1] < time_bins[ii]])]
+    trajectories = [traj for traj in trajectories if traj.fixation != "active"]  # Remove active trajectories
+    traj_per_bin, fixed_per_bin, lost_per_bin, proba_fix = [], [], [], []
+    mean_freq_bin = []
 
-    # Computation of the mean in each bin, active trajectories contribute their current frequency,
-    # fixed contribute1 and lost contribute 0
-    mean = []
-    for ii in range(len(freqs)):
-        mean = mean + [np.sum(freqs[ii]) + fixed[ii]]
-        mean[-1] /= (len(freqs[ii]) + fixed[ii] + lost[ii])
+    for ii in range(len(frequency_bins) - 1):
+        bin_trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
+            traj.frequencies >= frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]), dtype=bool)]
 
-    nb_active = [len(freq) for freq in freqs]
-    nb_dead = [fixed[ii] + lost[ii] for ii in range(len(fixed))]
+        nb_traj = len(bin_trajectories)
+        nb_fix = len([traj for traj in bin_trajectories if traj.fixation == "fixed"])
+        nb_lost = len([traj for traj in bin_trajectories if traj.fixation == "lost"])
 
-    return 0.5 * (time_bins[1:] + time_bins[:-1]), mean, nb_active, nb_dead
+        traj_per_bin = traj_per_bin + [nb_traj]
+        fixed_per_bin = fixed_per_bin + [nb_fix]
+        lost_per_bin = lost_per_bin + [nb_lost]
+        if nb_traj > 0:
+            proba_fix = proba_fix + [nb_fix / nb_traj]
+        else:
+            proba_fix = proba_fix + [None]
+
+        # Computes the "center" of the bin
+        for traj in bin_trajectories:
+            tmp_mean = []
+            idxs = np.where(np.logical_and(traj.frequencies >=
+                                           frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]))[0]
+            tmp_mean = tmp_mean + traj.frequencies[idxs].data.tolist()
+        mean_freq_bin = mean_freq_bin + [np.mean(tmp_mean)]
+
+    err_proba_fix = np.array(proba_fix) * np.sqrt(1 / (np.array(fixed_per_bin) +
+                                                       1e-10) + 1 / np.array(traj_per_bin))
+
+    return mean_freq_bin, proba_fix, err_proba_fix
 
 
-# regions = ["env", "pol", "gag"]
-# trajectories = {}
-#
+regions = ["env", "pol", "gag"]
+trajectories = {}
+
+for region in regions:
+    # Create the dictionary with the different regions
+    tmp_trajectories = create_all_patient_trajectories(region)
+    tmp_trajectories = [traj for traj in tmp_trajectories if traj.t[-1] != 0]
+    trajectories[region] = tmp_trajectories
+
+    # Split into sub dictionnaries (rev, non_rev and all)
+    rev = [traj for traj in trajectories[region] if traj.reversion == True]
+    non_rev = [traj for traj in trajectories[region] if traj.reversion == False]
+    syn = [traj for traj in trajectories[region] if traj.synonymous == True]
+    non_syn = [traj for traj in trajectories[region] if traj.synonymous == False]
+    trajectories[region] = {"rev": rev, "non_rev": non_rev,
+                            "syn": syn, "non_syn": non_syn, "all": trajectories[region]}
+
+pfix = {}
+for region in regions:
+    pfix[region] = {}
+    for key in trajectories[region].keys():
+        tmp_freq_bin, tmp_proba, tmp_err = get_proba_fix(trajectories[region][key])
+        pfix[region][key] = {"freq_bin": tmp_freq_bin, "proba": tmp_proba, "error": tmp_err}
+
+plt.figure()
+plt.errorbar(pfix["env"]["rev"]["freq_bin"], pfix["env"]["rev"]["proba"], yerr=pfix["env"]["rev"]["error"])
+plt.errorbar(pfix["env"]["non_rev"]["freq_bin"], pfix["env"]["non_rev"]["proba"], yerr=pfix["env"]["non_rev"]["error"])
+plt.plot([0, 1], [0, 1], 'k--')
+plt.show()
+
 # for region in regions:
 #     # Create the dictionary with the different regions
 #     tmp_trajectories = create_all_patient_trajectories(region)
@@ -71,30 +97,3 @@ def get_mean_in_time(trajectories, nb_bins=15, freq_range=[0.4, 0.6]):
 #     non_syn = [traj for traj in trajectories[region] if traj.synonymous == False]
 #     trajectories[region] = {"rev": rev, "non_rev": non_rev,
 #                             "syn": syn, "non_syn": non_syn, "all": trajectories[region]}
-#
-# means = {}
-# freq_ranges = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8]]
-# times = []
-#
-# for freq_range in freq_ranges:
-#     means[str(freq_range)] = {}
-#     for region in regions:
-#         means[str(freq_range)][region] = {}
-#         for key in trajectories[region].keys():
-#             times, means[str(freq_range)][region][key], _, _ = get_mean_in_time(
-#                 trajectories[region][key], freq_range=freq_range)
-
-
-
-regions = ["env", "pol", "gag"]
-times = [-892.85714286, -678.57142857, -464.28571429, -250.        ,
-        -35.71428571,  178.57142857,  392.85714286,  607.14285714,
-        821.42857143, 1035.71428571, 1250.        , 1464.28571429,
-       1678.57142857, 1892.85714286]
-
-fig, axs = plt.subplots(ncols=3, nrows=2)
-for idx_row, split_type in enumerate([["rev", "non_rev"], ["syn", "non_syn"]]):
-    for idx_col, region in enumerate(regions):
-        freq_range = str([0.4, 0.6])
-        axs[idx_row, idx_col].plot(times, means[freq_range][region][split_type[0]], '-.')
-        axs[idx_row, idx_col].plot(times, means[freq_range][region][split_type[1]], '--.')
