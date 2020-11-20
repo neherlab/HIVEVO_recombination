@@ -5,20 +5,16 @@ from hivevo.patients import Patient
 import trajectory
 
 
-def get_proba_fix(trajectories, nb_bin=8, bin_type="uniform", freq_range=[0.05, 0.95]):
+def get_proba_fix(trajectories, nb_bin=8, freq_range=[0.1, 0.9]):
     """
     Gives the probability of fixation in each frequency bin.
     """
-    if bin_type not in ["uniform", "nonuniform"]:
-        raise ValueError("bin_type must be either uniform or non uniform.")
 
-    if bin_type == "uniform":
-        frequency_bins = np.linspace(freq_range[0], freq_range[1], nb_bin)
-    elif bin_type == "nonuniform":
-        frequency_bins = get_nonuniform_bins(nb_bin, bin_range=freq_range)
+    frequency_bins = get_nonuniform_bins(nb_bin, bin_range=freq_range)
 
     trajectories = [traj for traj in trajectories if traj.fixation != "active"]  # Remove active trajectories
     traj_per_bin, fixed_per_bin, lost_per_bin, proba_fix = [], [], [], []
+    mean_freq_bin = []
 
     for ii in range(len(frequency_bins) - 1):
         bin_trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
@@ -36,10 +32,19 @@ def get_proba_fix(trajectories, nb_bin=8, bin_type="uniform", freq_range=[0.05, 
         else:
             proba_fix = proba_fix + [None]
 
-    frequency_bins = 0.5 * (frequency_bins[:-1] + frequency_bins[1:])
-    err_proba_fix = np.array(proba_fix) * np.sqrt(1 / (np.array(fixed_per_bin) + 1e-10) + 1 / np.array(traj_per_bin))
+        # Computes the "center" of the bin
+        for traj in bin_trajectories:
+            tmp_mean = []
+            idxs = np.where(np.logical_and(traj.frequencies >=
+                                           frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]))[0]
+            tmp_mean = tmp_mean + traj.frequencies[idxs].data.tolist()
+        mean_freq_bin = mean_freq_bin + [np.mean(tmp_mean)]
 
-    return frequency_bins, proba_fix, traj_per_bin, fixed_per_bin, lost_per_bin, err_proba_fix
+    err_proba_fix = np.array(proba_fix) * np.sqrt(1 / (np.array(fixed_per_bin) +
+                                                       1e-10) + 1 / np.array(traj_per_bin))
+
+    return mean_freq_bin, proba_fix, err_proba_fix
+
 
 
 def plot_proba_fix(patient, region, frequency_bins, proba_fix, traj, fixed, lost, criteria, fontsize=16):
