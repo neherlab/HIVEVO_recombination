@@ -3,29 +3,37 @@ from hivevo.patients import Patient
 import filenames
 import matplotlib.pyplot as plt
 import numpy as np
+import tools
+from hivevo.patients import Patient
 
 
-if __name__ == "__main__":
-    region = "pol"
-    fontsize = 16
-    nb_bin = 30
+def get_missed_sweep_mask(aft):
+    """
+    Returns a mask where true are the position where a fast sweep is seen.
+    """
+    mask = np.zeros(aft.shape, dtype=bool)
+    mask[1:, :, :] = np.logical_and(aft[:-1, :, :] <= 0.01, aft[1:, :, :] >= 0.99)
+    mask[1:, :, :] = np.logical_and(mask[1, :, :], np.logical_or(
+        ~aft.mask[:-1, :, :], ~aft.mask[1:, :, :]))  # to avoid masked data to be included
+    mask = np.sum(mask, axis=0, dtype=bool)
+    mask = np.tile(mask, (aft.shape[0], 1, 1))
+    return mask
 
-    trajectories = create_all_patient_trajectories(region)
-    trajectories = [traj for traj in trajectories if traj.t[-1] > 0] # Remove 1 point trajectories
-    syn_traj = [traj for traj in trajectories if traj.synonymous == True]
-    non_syn_traj = [traj for traj in trajectories if traj.synonymous == False]
 
-    syn_traj_fixed = [traj for traj in syn_traj if traj.fixation == "fixed"]
-    non_syn_traj_fixed = [traj for traj in non_syn_traj if traj.fixation == "fixed"]
+region = "env"
+patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
 
-    syn_time = [traj.t[-1] for traj in syn_traj_fixed]
-    non_syn_time = [traj.t[-1] for traj in non_syn_traj_fixed]
+# missed_sweep_tot = 0
+# for patient_name in patient_names:
+#     patient = Patient.load(patient_name)
+#     aft = patient.get_allele_frequency_trajectories(region)
+#     missed_sweep = get_missed_sweep_number(aft)
+#     missed_sweep_tot += missed_sweep
+#     print(f"Patient {patient_name}: {missed_sweep}")
+# print(missed_sweep_tot)
 
-    plt.figure()
-    plt.hist(non_syn_time, bins=nb_bin, label="Non_Syn")
-    plt.hist(syn_time, bins=nb_bin, label="Syn")
-    plt.legend(fontsize=fontsize)
-    plt.xlabel("Time for fixation [days]", fontsize=fontsize)
-    plt.ylabel("# of trajectories", fontsize=fontsize)
-    plt.grid()
-    plt.show()
+patient = Patient.load("p1")
+aft = patient.get_allele_frequency_trajectories("env")
+mask = get_missed_sweep_mask(aft)
+missed_sweeps = aft[mask]
+reshaped = np.reshape(missed_sweeps, (aft.shape[0], -1))
