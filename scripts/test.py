@@ -13,45 +13,14 @@ import os
 sys.path.append("../scripts/")
 
 
-def get_proba_fix(trajectories, nb_bin=8, freq_range=[0.1, 0.9]):
-    """
-    Gives the probability of fixation in each frequency bin.
-    """
-
-    frequency_bins = get_nonuniform_bins(nb_bin, bin_range=freq_range)
-
-    trajectories = [traj for traj in trajectories if traj.fixation != "active"]  # Remove active trajectories
-    traj_per_bin, fixed_per_bin, lost_per_bin, proba_fix = [], [], [], []
-    mean_freq_bin = []
-
-    for ii in range(len(frequency_bins) - 1):
-        bin_trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
-            traj.frequencies >= frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]), dtype=bool)]
-
-        nb_traj = len(bin_trajectories)
-        nb_fix = len([traj for traj in bin_trajectories if traj.fixation == "fixed"])
-        nb_lost = len([traj for traj in bin_trajectories if traj.fixation == "lost"])
-
-        traj_per_bin = traj_per_bin + [nb_traj]
-        fixed_per_bin = fixed_per_bin + [nb_fix]
-        lost_per_bin = lost_per_bin + [nb_lost]
-        if nb_traj > 0:
-            proba_fix = proba_fix + [nb_fix / nb_traj]
-        else:
-            proba_fix = proba_fix + [None]
-
-        # Computes the "center" of the bin
-        for traj in bin_trajectories:
-            tmp_mean = []
-            idxs = np.where(np.logical_and(traj.frequencies >=
-                                           frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]))[0]
-            tmp_mean = tmp_mean + traj.frequencies[idxs].data.tolist()
-        mean_freq_bin = mean_freq_bin + [np.mean(tmp_mean)]
-
-    err_proba_fix = np.array(proba_fix) * np.sqrt(1 / (np.array(fixed_per_bin) +
-                                                       1e-10) + 1 / np.array(traj_per_bin))
-
-    return mean_freq_bin, proba_fix, err_proba_fix
+def split_traj_fitness(trajectories, first_quantiles=[0.05, 0.5], second_quantiles=[0.5, 0.95]):
+    first_quantiles_value = [np.nanquantile([traj.fitness_cost for traj in trajectories], first_quantile) for first_quantile in first_quantiles]
+    second_quantiles_value = [np.nanquantile([traj.fitness_cost for traj in trajectories], second_quantile) for second_quantile in second_quantiles]
+    traj_low = [traj for traj in trajectories if (traj.fitness_cost > first_quantiles_value[0]) and (
+        traj.fitness_cost < first_quantiles_value[1])]
+    traj_high = [traj for traj in trajectories if (traj.fitness_cost > second_quantiles_value[0]) and (
+        traj.fitness_cost < second_quantiles_value[1])]
+    return traj_low, traj_high
 
 
 regions = ["env", "pol", "gag"]
@@ -66,34 +35,40 @@ for region in regions:
     # Split into sub dictionnaries (rev, non_rev and all)
     rev = [traj for traj in trajectories[region] if traj.reversion == True]
     non_rev = [traj for traj in trajectories[region] if traj.reversion == False]
-    syn = [traj for traj in trajectories[region] if traj.synonymous == True]
-    non_syn = [traj for traj in trajectories[region] if traj.synonymous == False]
-    trajectories[region] = {"rev": rev, "non_rev": non_rev,
-                            "syn": syn, "non_syn": non_syn, "all": trajectories[region]}
+    trajectories[region] = {"rev": rev, "non_rev": non_rev, "all":trajectories[region]}
 
-pfix = {}
-for region in regions:
-    pfix[region] = {}
     for key in trajectories[region].keys():
-        tmp_freq_bin, tmp_proba, tmp_err = get_proba_fix(trajectories[region][key])
-        pfix[region][key] = {"freq_bin": tmp_freq_bin, "proba": tmp_proba, "error": tmp_err}
+        traj_low, traj_high = split_traj_fitness(trajectories[region][key])
+        trajectories[region][key] = {"low":traj_low, "high":traj_high, "all":trajectories[region][key]}
 
-plt.figure()
-plt.errorbar(pfix["env"]["rev"]["freq_bin"], pfix["env"]["rev"]["proba"], yerr=pfix["env"]["rev"]["error"])
-plt.errorbar(pfix["env"]["non_rev"]["freq_bin"], pfix["env"]["non_rev"]["proba"], yerr=pfix["env"]["non_rev"]["error"])
-plt.plot([0, 1], [0, 1], 'k--')
-plt.show()
 
-# for region in regions:
-#     # Create the dictionary with the different regions
-#     tmp_trajectories = create_all_patient_trajectories(region)
-#     tmp_trajectories = [traj for traj in tmp_trajectories if traj.t[-1] != 0]
-#     trajectories[region] = tmp_trajectories
-#
-#     # Split into sub dictionnaries (rev, non_rev and all)
-#     rev = [traj for traj in trajectories[region] if traj.reversion == True]
-#     non_rev = [traj for traj in trajectories[region] if traj.reversion == False]
-#     syn = [traj for traj in trajectories[region] if traj.synonymous == True]
-#     non_syn = [traj for traj in trajectories[region] if traj.synonymous == False]
-#     trajectories[region] = {"rev": rev, "non_rev": non_rev,
-#                             "syn": syn, "non_syn": non_syn, "all": trajectories[region]}
+from propagator import get_mean_in_time
+reversions = ["rev", "non_rev"]
+fitness = ["low", "high"]
+nb_bins = 15
+freq_ranges = [[0.2, 0.4], [0.3, 0.7], [0.6, 0.8]]
+means = {}
+
+for freq_range in freq_ranges:
+    means[str(freq_range)] = copy.deepcopy(trajectories)
+    for region in regions:
+        for reversion in reversions:
+            for f in fitness:
+                time_bins, tmp_mean, _, _ = get_mean_in_time(trajectories[region][reversion][f], nb_bins, freq_range)
+                means[str(freq_range)][region][reversion][f] = tmp_mean
+
+
+def plot_means(time_bins, means, freq_ranges, region, reversion, fontsize=16):
+    plt.figure(figsize=(14, 10))
+    for freq_range in freq_ranges:
+        plt.plot(time_bins, means[str(freq_range)][region][reversion]["low"], '.-', label=f"{region}-{reversion}-low")
+        plt.plot(time_bins, means[str(freq_range)][region][reversion]["high"], '.-', label=f"{region}-{reversion}-high")
+    plt.xlabel("Time [days]", fontsize=fontsize)
+    plt.ylabel("Frequency", fontsize=fontsize)
+    plt.legend(fontsize=fontsize)
+    plt.title(f"Region {region}", fontsize=fontsize)
+    plt.ylim([0,1])
+    plt.grid()
+    plt.show()
+
+plot_means(time_bins, means, freq_ranges, "pol", "non_rev")
