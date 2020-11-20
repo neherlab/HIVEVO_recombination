@@ -12,7 +12,7 @@ def get_mean_in_time(trajectories, nb_bins=15, freq_range=[0.4, 0.6]):
     Returns the middle of the time bins and the computed frequency mean.
     """
     # Create bins and select trajectories going through the freq_range
-    time_bins = np.linspace(-1000, 2000, nb_bins)
+    time_bins = np.linspace(-950, 2000, nb_bins)
     trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
         traj.frequencies >= freq_range[0], traj.frequencies < freq_range[1]), dtype=bool)]
 
