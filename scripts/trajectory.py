@@ -8,7 +8,7 @@ from hivevo.HIVreference import HIVreference
 
 
 class Trajectory():
-    def __init__(self, frequencies, t, date, t_last_sample, fixation, threshold_low, threshold_high,
+    def __init__(self, frequencies, t, date, t_last_sample, t_previous_sample, fixation, threshold_low, threshold_high,
                  patient, region, position, nucleotide, synonymous, reversion, fitness_cost):
 
         self.frequencies = frequencies              # Numpy 1D vector
@@ -16,6 +16,8 @@ class Trajectory():
         self.date = date                            # Date at t=0 (int, in days)
         # Number of days at which last sample was taken for the patient (relative to t[0] = 0)
         self.t_last_sample = t_last_sample
+        # Number of days between the first point of the trajectory and the previous sample that was taken
+        self.t_previous_sample = t_previous_sample
         self.fixation = fixation                    # "fixed", "active", "lost" (at the next time point)
         self.threshold_low = threshold_low          # Value of threshold_low used for extraction
         self.threshold_high = threshold_high        # Value of threshold_high used for extraction
@@ -103,7 +105,7 @@ def create_trajectory_list(patient, region, aft, ref, threshold_low=0.01, thresh
     # Get boolean matrix to label trajectories as synonymous and/or reversion
     syn_mutations = patient.get_syn_mutations(region, mask_constrained=syn_constrained)
     reversion_map = get_reversion_map(patient, region, aft, ref)
-    seq_fitness = get_fitness_cost(patient, region, aft) # to the "any" subtype by default
+    seq_fitness = get_fitness_cost(patient, region, aft)  # to the "any" subtype by default
 
     date = patient.dsi[0]
     time = patient.dsi - date
@@ -126,6 +128,11 @@ def create_trajectory_list(patient, region, aft, ref, threshold_low=0.01, thresh
                 freqs.mask = mut_freq_mask[idx_start:idx_end, ii]
                 t = time[idx_start:idx_end]
 
+            t_prev_sample = 0
+            if idx_start != 0:
+                t_prev_sample = time[idx_start-1]
+            t_prev_sample -= t[0] # offset so that trajectory starts at t=0
+
             if idx_end == None:
                 fixation = "active"
             elif filter_fixation[idx_end, ii] == True:
@@ -135,9 +142,10 @@ def create_trajectory_list(patient, region, aft, ref, threshold_low=0.01, thresh
 
             position = coordinates[0, ii, 1]
             nucleotide = coordinates[0, ii, 0]
-            traj = Trajectory(np.ma.array(freqs), t - t[0], date + t[0], time[-1] - t[0], fixation, threshold_low,
+            traj = Trajectory(np.ma.array(freqs), t - t[0], date + t[0], time[-1] - t[0], t_prev_sample, fixation, threshold_low,
                               threshold_high, patient.name, region, position=position, nucleotide=nucleotide,
-                              synonymous=syn_mutations[nucleotide, position], reversion=reversion_map[nucleotide, position],
+                              synonymous=syn_mutations[nucleotide,
+                                                       position], reversion=reversion_map[nucleotide, position],
                               fitness_cost=seq_fitness[position])
             trajectories = trajectories + [traj]
 
@@ -245,6 +253,7 @@ def get_reversion_map(patient, region, aft, ref):
     reversion_map[ref_idx, map_to_ref[:, 2]] = True
     return reversion_map
 
+
 def get_fitness_cost(patient, region, aft, subtype="any"):
     """
     Returns a 1D vector (patient_sequence_length) with the fitness coefficient for each sites. Sites missing
@@ -256,7 +265,7 @@ def get_fitness_cost(patient, region, aft, subtype="any"):
     map_to_ref = patient.map_to_external_reference(region)
     fitness = np.empty(aft.shape[2])
     fitness[:] = np.nan
-    fitness[map_to_ref[:,2]] = fitness_consensus[map_to_ref[:,0]-map_to_ref[0][0]]
+    fitness[map_to_ref[:, 2]] = fitness_consensus[map_to_ref[:, 0] - map_to_ref[0][0]]
     return fitness
 
 
