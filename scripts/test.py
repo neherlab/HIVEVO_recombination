@@ -16,15 +16,14 @@ from hivevo.HIVreference import HIVreference
 
 
 region = "env"
+freq_range = [0.2, 0.4]
 trajectories = create_all_patient_trajectories(region)
 print(len(trajectories))
+trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
+        traj.frequencies >= freq_range[0], traj.frequencies < freq_range[1]), dtype=bool)]
 
-times = np.linspace(-800, 0, 50)
-number = [len([traj for traj in trajectories if traj.t_previous_sample > times[idx]]) for idx in range(len(times))]
+trajectories2 = [traj for traj in trajectories if np.sum(np.logical_and(
+        traj.frequencies[0] >= freq_range[0], traj.frequencies[0] < freq_range[1]), dtype=bool)]
 
-plt.figure()
-plt.plot(times, number, '.-')
-plt.xlabel("Time last sample [days]")
-plt.ylabel('Number of trajectories with t_last > t')
-plt.grid()
-plt.show()
+print(len(trajectories))
+print(len(trajectories2))
