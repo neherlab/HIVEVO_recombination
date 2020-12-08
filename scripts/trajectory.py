@@ -5,6 +5,7 @@ import filenames
 from hivevo.patients import Patient
 import tools
 from hivevo.HIVreference import HIVreference
+import pickle
 
 
 class Trajectory():
@@ -298,6 +299,13 @@ def make_trajectory_dict(remove_one_point=False):
         non_syn = [traj for traj in trajectories[region] if traj.synonymous == False]
         trajectories[region] = {"rev": rev, "non_rev": non_rev,
                                 "syn": syn, "non_syn": non_syn, "all": trajectories[region]}
+
+    return trajectories
+
+def load_trajectory_dict(path = "trajectory_dict"):
+    trajectories = {}
+    with open(path, 'rb') as file:
+        trajectories = pickle.load(file)
 
     return trajectories
 
