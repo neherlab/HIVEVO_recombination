@@ -269,6 +269,31 @@ def get_fitness_cost(patient, region, aft, subtype="any"):
     return fitness
 
 
+def make_all_trajectory_dict(remove_one_point=False):
+    regions = ["env", "pol", "gag", "all"]
+    trajectories = {}
+
+    for region in regions:
+        # Create the dictionary with the different regions
+        if region != "all":
+            tmp_trajectories = create_all_patient_trajectories(region)
+        else:
+            tmp_trajectories = create_all_patient_trajectories("env") + create_all_patient_trajectories("pol") + create_all_patient_trajectories("gag")
+        if remove_one_point:
+            tmp_trajectories = [traj for traj in tmp_trajectories if traj.t[-1] != 0]
+        trajectories[region] = tmp_trajectories
+
+        # Split into sub dictionnaries (rev, non_rev and all)
+        rev = [traj for traj in trajectories[region] if traj.reversion == True]
+        non_rev = [traj for traj in trajectories[region] if traj.reversion == False]
+        syn = [traj for traj in trajectories[region] if traj.synonymous == True]
+        non_syn = [traj for traj in trajectories[region] if traj.synonymous == False]
+        trajectories[region] = {"rev": rev, "non_rev": non_rev,
+                                "syn": syn, "non_syn": non_syn, "all": trajectories[region]}
+
+    return trajectories
+
+
 if __name__ == "__main__":
     region = "pol"
     patient = Patient.load("p1")
