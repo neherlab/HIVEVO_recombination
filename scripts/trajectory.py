@@ -130,8 +130,8 @@ def create_trajectory_list(patient, region, aft, ref, threshold_low=0.01, thresh
 
             t_prev_sample = 0
             if idx_start != 0:
-                t_prev_sample = time[idx_start-1]
-            t_prev_sample -= t[0] # offset so that trajectory starts at t=0
+                t_prev_sample = time[idx_start - 1]
+            t_prev_sample -= t[0]  # offset so that trajectory starts at t=0
 
             if idx_end == None:
                 fixation = "active"
@@ -269,7 +269,14 @@ def get_fitness_cost(patient, region, aft, subtype="any"):
     return fitness
 
 
-def make_all_trajectory_dict(remove_one_point=False):
+def make_trajectory_dict(remove_one_point=False):
+    """
+    Returns a dictionary of the form trajectories[region][type]. Trajectories[region][type] is a list of all
+    the trajectories in the given region and with the given type.
+    Possible regions are ["env", "pol", "gag", "all"].
+    Possible types are ["syn", "non_syn", "rev", "non_rev"].
+    """
+
     regions = ["env", "pol", "gag", "all"]
     trajectories = {}
 
@@ -278,7 +285,8 @@ def make_all_trajectory_dict(remove_one_point=False):
         if region != "all":
             tmp_trajectories = create_all_patient_trajectories(region)
         else:
-            tmp_trajectories = create_all_patient_trajectories("env") + create_all_patient_trajectories("pol") + create_all_patient_trajectories("gag")
+            tmp_trajectories = create_all_patient_trajectories(
+                "env") + create_all_patient_trajectories("pol") + create_all_patient_trajectories("gag")
         if remove_one_point:
             tmp_trajectories = [traj for traj in tmp_trajectories if traj.t[-1] != 0]
         trajectories[region] = tmp_trajectories
