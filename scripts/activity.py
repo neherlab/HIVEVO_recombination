@@ -97,7 +97,7 @@ def get_average_activity(trajectories, normalize=False, as_dict=True):
     """
     Return the number of trajectories fixed; lost and active in time.
     """
-    time_bins = np.linspace(0, 2000, 30)
+    time_bins = np.linspace(0, 2700, 40)
     filtered_fixed = [traj for traj in trajectories if traj.fixation == "fixed"]
     filtered_lost = [traj for traj in trajectories if traj.fixation == "lost"]
     filtered_active = [traj for traj in trajectories if traj.fixation == "active"]
