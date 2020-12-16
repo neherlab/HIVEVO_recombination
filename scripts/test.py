@@ -44,14 +44,14 @@ def get_proba_fix(trajectories, nb_bin=8, freq_range=[0.1, 0.9]):
             idxs = np.where(np.logical_and(traj.frequencies >=
                                            frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]))[0]
             tmp_mean = tmp_mean + [traj.frequencies[idxs[0]]]
-        mean_freq_bin = mean_freq_bin + [np.mean(tmp_mean)]
+        mean_freq_bin = mean_freq_bin + [np.ma.mean(tmp_mean)]
 
     err_proba_fix = np.array(proba_fix) * np.sqrt(1 / (np.array(fixed_per_bin) +
                                                        1e-10) + 1 / np.array(traj_per_bin))
 
     return mean_freq_bin, proba_fix, err_proba_fix
 
-region = "pol"
+region = "env"
 mut_type = "non_syn"
 trajectories = load_trajectory_dict()
 
