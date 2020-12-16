@@ -8,60 +8,57 @@ import os
 import pickle
 from hivevo.patients import Patient
 from trajectory import load_trajectory_dict
-from activity import get_average_activity
+from proba_fix import get_nonuniform_bins
 sys.path.append("../scripts/")
 
-
-def get_mean_in_time(trajectories, nb_bins=15):
+def get_proba_fix(trajectories, nb_bin=8, freq_range=[0.1, 0.9]):
     """
-    Computes the mean frequency in time of a set of trajectories from the point they are seen in the freq_range window.
-    Returns the middle of the time bins and the computed frequency mean.
+    Gives the probability of fixation in each frequency bin.
     """
-    # Create bins and select trajectories going through the freq_range
-    time_bins = np.linspace(-110, 3000, nb_bins)
 
-    # Offset trajectories to set t=0 at the point they are seen in the freq_range and adds all the frequencies / times
-    # to arrays for later computation of mean
-    t_traj = np.array([])
-    f_traj = np.array([])
-    for traj in trajectories:
-        traj.t += 0.5 * traj.t_previous_sample
-        t_traj = np.concatenate((t_traj, traj.t))
-        f_traj = np.concatenate((f_traj, traj.frequencies))
+    frequency_bins = get_nonuniform_bins(nb_bin, bin_range=freq_range)
 
-    # Binning of all the data in the time bins
-    filtered_fixed = [traj for traj in trajectories if traj.fixation == "fixed"]
-    filtered_lost = [traj for traj in trajectories if traj.fixation == "lost"]
-    freqs, fixed, lost = [], [], []
-    for ii in range(len(time_bins) - 1):
-        freqs = freqs + [f_traj[np.logical_and(t_traj >= time_bins[ii], t_traj < time_bins[ii + 1])]]
-        fixed = fixed + [len([traj for traj in filtered_fixed if traj.t[-1] < time_bins[ii]])]
-        lost = lost + [len([traj for traj in filtered_lost if traj.t[-1] < time_bins[ii]])]
+    trajectories = [traj for traj in trajectories if traj.fixation != "active"]  # Remove active trajectories
+    traj_per_bin, fixed_per_bin, lost_per_bin, proba_fix = [], [], [], []
+    mean_freq_bin = []
 
-    # Computation of the mean in each bin, active trajectories contribute their current frequency,
-    # fixed contribute 1 and lost contribute 0
-    mean = []
-    for ii in range(len(freqs)):
-        mean = mean + [np.sum(freqs[ii]) + fixed[ii]]
-        mean[-1] /= (len(freqs[ii]) + fixed[ii] + lost[ii])
+    for ii in range(len(frequency_bins) - 1):
+        bin_trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
+            traj.frequencies >= frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]), dtype=bool)]
 
-    nb_active = [len(freq) for freq in freqs]
-    nb_dead = [fixed[ii] + lost[ii] for ii in range(len(fixed))]
+        nb_traj = len(bin_trajectories)
+        nb_fix = len([traj for traj in bin_trajectories if traj.fixation == "fixed"])
+        nb_lost = len([traj for traj in bin_trajectories if traj.fixation == "lost"])
 
-    return 0.5 * (time_bins[1:] + time_bins[:-1]), mean, nb_active, nb_dead
+        traj_per_bin = traj_per_bin + [nb_traj]
+        fixed_per_bin = fixed_per_bin + [nb_fix]
+        lost_per_bin = lost_per_bin + [nb_lost]
+        if nb_traj > 0:
+            proba_fix = proba_fix + [nb_fix / nb_traj]
+        else:
+            proba_fix = proba_fix + [None]
 
+        # Computes the "center" of the bin
+        tmp_mean = []
+        for traj in bin_trajectories:
+            idxs = np.where(np.logical_and(traj.frequencies >=
+                                           frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]))[0]
+            tmp_mean = tmp_mean + [traj.frequencies[idxs[0]]]
+        mean_freq_bin = mean_freq_bin + [np.mean(tmp_mean)]
 
-freq_range = [0.2, 0.4]
+    err_proba_fix = np.array(proba_fix) * np.sqrt(1 / (np.array(fixed_per_bin) +
+                                                       1e-10) + 1 / np.array(traj_per_bin))
+
+    return mean_freq_bin, proba_fix, err_proba_fix
+
+region = "pol"
+mut_type = "non_syn"
 trajectories = load_trajectory_dict()
-trajectories = trajectories["env"]["non_syn"]
-trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
-    traj.frequencies[0] >= freq_range[0], traj.frequencies[0] < freq_range[1]), dtype=bool)]
-time, mean, _, _ = get_mean_in_time(trajectories)
 
-plt.figure()
-plt.plot(time, mean, '.-')
-plt.grid()
-plt.xlabel("Age [days]")
-plt.ylabel("Frequency")
-plt.ylim([0, 1])
+freq_bin, proba, _= get_proba_fix(trajectories[region][mut_type], nb_bin=8)
+
+plt.plot(freq_bin, proba)
+plt.plot([0,1], [0,1], 'k--')
+plt.xlabel("Initial frequency")
+plt.ylabel("P_fix")
 plt.show()
