@@ -16,9 +16,9 @@ def get_proba_fix(trajectories, nb_bin=8, freq_range=[0.1, 0.9]):
     traj_per_bin, fixed_per_bin, lost_per_bin, proba_fix = [], [], [], []
     mean_freq_bin = []
 
-    for ii in range(len(frequency_bins) - 1):
+    for ii in range(len(frequency_bins) - 2):
         bin_trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
-            traj.frequencies >= frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]), dtype=bool)]
+            traj.frequencies >= frequency_bins[ii], traj.frequencies < frequency_bins[ii + 2]), dtype=bool)]
 
         nb_traj = len(bin_trajectories)
         nb_fix = len([traj for traj in bin_trajectories if traj.fixation == "fixed"])
@@ -36,7 +36,7 @@ def get_proba_fix(trajectories, nb_bin=8, freq_range=[0.1, 0.9]):
         tmp_mean = np.ma.array([])
         for traj in bin_trajectories:
             idxs = np.where(np.logical_and(traj.frequencies >=
-                                           frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]))[0]
+                                           frequency_bins[ii], traj.frequencies < frequency_bins[ii + 2], dtype=bool))[0]
             tmp_mean = np.ma.append(tmp_mean, traj.frequencies[idxs[0]])
         mean_freq_bin = mean_freq_bin + [np.ma.mean(tmp_mean)]
 
