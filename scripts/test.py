@@ -39,23 +39,24 @@ def get_proba_fix(trajectories, nb_bin=8, freq_range=[0.1, 0.9]):
             proba_fix = proba_fix + [None]
 
         # Computes the "center" of the bin
-        tmp_mean = []
+        tmp_mean = np.ma.array([])
         for traj in bin_trajectories:
             idxs = np.where(np.logical_and(traj.frequencies >=
                                            frequency_bins[ii], traj.frequencies < frequency_bins[ii + 1]))[0]
-            tmp_mean = tmp_mean + [traj.frequencies[idxs[0]]]
+            tmp_mean = np.ma.append(tmp_mean, traj.frequencies[idxs[0]])
         mean_freq_bin = mean_freq_bin + [np.ma.mean(tmp_mean)]
 
     err_proba_fix = np.array(proba_fix) * np.sqrt(1 / (np.array(fixed_per_bin) +
                                                        1e-10) + 1 / np.array(traj_per_bin))
 
-    return mean_freq_bin, proba_fix, err_proba_fix
+
+    return mean_freq_bin, proba_fix, traj_per_bin, err_proba_fix
 
 region = "env"
 mut_type = "non_syn"
 trajectories = load_trajectory_dict()
 
-freq_bin, proba, _= get_proba_fix(trajectories[region][mut_type], nb_bin=8)
+freq_bin, proba, nb_traj, _ = get_proba_fix(trajectories[region][mut_type], nb_bin=8)
 
 plt.plot(freq_bin, proba)
 plt.plot([0,1], [0,1], 'k--')
