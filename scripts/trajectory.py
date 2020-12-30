@@ -245,7 +245,7 @@ def get_reference_filter(patient, region, aft, ref, gap_threshold=0.1):
 def get_reversion_map(patient, region, aft, ref):
     """
     Returns a 2D boolean matrix (nucleotide*patient_sequence_length) where True are the positions that
-    correspond to a reversion to the consensus sequence.
+    correspond to the reference nucleotide.
     """
     reversion_map = np.zeros((aft.shape[1], aft.shape[2]), dtype="bool")
     map_to_ref = patient.map_to_external_reference(region)
