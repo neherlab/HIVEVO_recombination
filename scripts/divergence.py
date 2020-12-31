@@ -60,7 +60,7 @@ def make_divergence_dict(time_average):
             patient = Patient.load(patient_name)
             aft = patient.get_allele_frequency_trajectories(region)
             div = divergence_matrix(aft)
-            mean_div = np.mean(np.mean(div, axis=1), axis=1)
+            mean_div = np.mean(np.mean(div, axis=1), axis=1) * 5/2 # 5/2 factor to account for non independent divergence
 
             rev_mask = get_reversion_mask(patient, region, aft, ref)
             rev_div = np.reshape(div[rev_mask], (div.shape[0], -1))
@@ -68,7 +68,7 @@ def make_divergence_dict(time_average):
 
             non_rev_mask = get_non_reversion_mask(patient, region, aft, ref)
             non_rev_div = np.reshape(div[non_rev_mask], (div.shape[0], -1))
-            mean_non_rev_div = np.mean(non_rev_div, axis=1)
+            mean_non_rev_div = np.mean(non_rev_div, axis=1) * 5  # 5 factor to account for non independent divergence
 
             # Transforming to regular array as mask is useless after averaging
             divergence_dict[region][patient_name]["rev"] = np.array(mean_rev_div)
