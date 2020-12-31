@@ -14,24 +14,29 @@ sys.path.append("../scripts/")
 def get_reversion_mask(patient, region, aft, ref):
     """
     Returns a 3D boolean matrix (timepoint*nucleotide*patient_sequence_length) where True are the positions that
-    correspond to the reference nucleotide.
-    """
-    reversion_mask = trajectory.get_reversion_map(patient, region, aft, ref)
-    reversion_mask = np.tile(reversion_mask, (aft.shape[0], 1, 1))
-    return reversion_mask
-
-
-def get_non_reversion_mask(patient, region, aft, ref):
-    """
-    Returns a 3D boolean matrix (timepoint*nucleotide*patient_sequence_length) where True are the positions that
-    do not correspond to the reference nucleotide. Nucleotides that are not mapped to reference and/or too often
-    seen gapped are removed.
+    correspond to the initial nucleotide when it is not the consensus (reversion is possible).
+    Removes nucleotide seen too often gapped or not mapped to the reference.
     """
     ref_filter = trajectory.get_reference_filter(patient, region, aft, ref)
     ref_filter = np.tile(ref_filter, (aft.shape[0], aft.shape[1], 1))
     reversion_mask = trajectory.get_reversion_map(patient, region, aft, ref)
     reversion_mask = np.tile(reversion_mask, (aft.shape[0], 1, 1))
-    return np.logical_and(ref_filter, ~reversion_mask)
+    initial_mask = tools.initial_idx_mask(patient, region, aft)
+    return np.logical_and(np.logical_and(initial_mask, ref_filter), ~reversion_mask)
+
+
+def get_non_reversion_mask(patient, region, aft, ref):
+    """
+    Returns a 3D boolean matrix (timepoint*nucleotide*patient_sequence_length) where True are the positions that
+    correspond to the initial nuclotide when it is also the consensus (reversion is not possible).
+    Removes nucleotide seen too often gapped or not mapped to the reference.
+    """
+    ref_filter = trajectory.get_reference_filter(patient, region, aft, ref)
+    ref_filter = np.tile(ref_filter, (aft.shape[0], aft.shape[1], 1))
+    reversion_mask = trajectory.get_reversion_map(patient, region, aft, ref)
+    reversion_mask = np.tile(reversion_mask, (aft.shape[0], 1, 1))
+    initial_mask = tools.initial_idx_mask(patient, region, aft)
+    return np.logical_and(np.logical_and(initial_mask, ref_filter), reversion_mask)
 
 
 def divergence_matrix(aft):
@@ -40,7 +45,7 @@ def divergence_matrix(aft):
     """
     div = np.zeros_like(aft)
     for ii in range(aft.shape[0]):
-        div[ii, :, :] = aft[0, :, :] * (1 - aft[ii, ::])
+        div[ii, :, :] = aft[0, :, :] * (1 - aft[ii, :, :])
     return div
 
 
@@ -60,7 +65,10 @@ def make_divergence_dict(time_average):
             patient = Patient.load(patient_name)
             aft = patient.get_allele_frequency_trajectories(region)
             div = divergence_matrix(aft)
-            mean_div = np.mean(np.mean(div, axis=1), axis=1) * 5/2 # 5/2 factor to account for non independent divergence
+
+            initial_mask = tools.initial_idx_mask(patient, region, aft)
+            div_initial = np.reshape(div[initial_mask], (div.shape[0], -1))
+            mean_div = np.mean(div_initial, axis=1)
 
             rev_mask = get_reversion_mask(patient, region, aft, ref)
             rev_div = np.reshape(div[rev_mask], (div.shape[0], -1))
@@ -68,8 +76,9 @@ def make_divergence_dict(time_average):
 
             non_rev_mask = get_non_reversion_mask(patient, region, aft, ref)
             non_rev_div = np.reshape(div[non_rev_mask], (div.shape[0], -1))
-            mean_non_rev_div = np.mean(non_rev_div, axis=1) * 5  # 5 factor to account for non independent divergence
+            mean_non_rev_div = np.mean(non_rev_div, axis=1)
 
+            # breakpoint()
             # Transforming to regular array as mask is useless after averaging
             divergence_dict[region][patient_name]["rev"] = np.array(mean_rev_div)
             divergence_dict[region][patient_name]["non_rev"] = np.array(mean_non_rev_div)
