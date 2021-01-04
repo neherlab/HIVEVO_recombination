@@ -82,6 +82,7 @@ def make_divergence_dict(time_average, ref=HIVreference(subtype="any")):
             divergence_dict[region][patient_name]["non_rev"] = np.array(mean_non_rev_div)
             divergence_dict[region][patient_name]["all"] = np.array(mean_div)
             divergence_dict[region][patient_name]["dsi"] = np.array(patient.dsi)
+            divergence_dict[region][patient_name]["div_matrix"] = div_initial
 
     # Computation of divergence average over all patients using interpolation
     for region in regions:
@@ -108,17 +109,20 @@ if __name__ == "__main__":
     time_average = np.arange(0, 3100, 100)
 
     divergence_dict = make_divergence_dict(time_average)
+    all_div_vector = np.array([])
+    for ii, region in enumerate(["env", "pol", "gag"]):
+        for patient_name in patient_names:
+            all_div_vector = np.concatenate(
+                (all_div_vector, divergence_dict[region][patient_name]["div_matrix"][-1, :].flatten()))
+
+
+    hist, bins = np.histogram(all_div_vector, bins=100)
+    bins = 0.5*(bins[:-1] + bins[1:])
 
     plt.figure()
-    for ii, region in enumerate(["env","pol","gag"]):
-        plt.plot(time_average, divergence_dict[region]["all"]["rev"], '-', color=colors[ii], label=region)
-        plt.plot(time_average, divergence_dict[region]["all"]["non_rev"], '--', color=colors[ii])
-        plt.plot(time_average, divergence_dict[region]["all"]["all"], ':', color=colors[ii])
-    plt.plot([0], [0], 'k-', label="Reversion")
-    plt.plot([0], [0], 'k--', label="Non-reversion")
-    plt.plot([0], [0], 'k:', label="All")
+    plt.plot(bins, hist*bins)
     plt.grid()
-    plt.xlabel("Time since infection [days]")
-    plt.ylabel("Divergence")
-    plt.legend()
+    plt.xlabel("Divergence value")
+    plt.ylabel("Relative contribution to divergence")
+    plt.yscale("log")
     plt.show()
