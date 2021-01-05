@@ -82,7 +82,9 @@ def make_divergence_dict(time_average, ref=HIVreference(subtype="any")):
             divergence_dict[region][patient_name]["non_rev"] = np.array(mean_non_rev_div)
             divergence_dict[region][patient_name]["all"] = np.array(mean_div)
             divergence_dict[region][patient_name]["dsi"] = np.array(patient.dsi)
-            divergence_dict[region][patient_name]["div_matrix"] = div_initial
+            divergence_dict[region][patient_name]["div_all"] = div_initial
+            divergence_dict[region][patient_name]["div_rev"] = rev_div
+            divergence_dict[region][patient_name]["div_non_rev"] = non_rev_div
 
     # Computation of divergence average over all patients using interpolation
     for region in regions:
@@ -117,7 +119,7 @@ if __name__ == "__main__":
 
 
     hist, bins = np.histogram(all_div_vector, bins=100)
-    bins = 0.5*(bins[:-1] + bins[1:])
+    bins = bins[:-1]
 
     plt.figure()
     plt.plot(bins, hist*bins)
