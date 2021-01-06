@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import os
+import pickle
 from hivevo.patients import Patient
 import trajectory
 import tools
@@ -22,6 +23,7 @@ def get_reversion_mask(patient, region, aft, ref):
     initial_mask = tools.initial_idx_mask(patient, region, aft)
     reversion_mask = trajectory.get_reversion_map(patient, region, aft, ref)
     reversion_mask = np.tile(reversion_mask, (aft.shape[0], 1, 1))
+
     return np.logical_and(np.logical_and(initial_mask, ref_filter), ~reversion_mask)
 
 
@@ -36,6 +38,7 @@ def get_non_reversion_mask(patient, region, aft, ref):
     initial_mask = tools.initial_idx_mask(patient, region, aft)
     reversion_mask = trajectory.get_reversion_map(patient, region, aft, ref)
     reversion_mask = np.tile(reversion_mask, (aft.shape[0], 1, 1))
+
     return np.logical_and(np.logical_and(initial_mask, ref_filter), reversion_mask)
 
 
@@ -46,6 +49,7 @@ def divergence_matrix(aft):
     div = np.zeros_like(aft)
     for ii in range(aft.shape[0]):
         div[ii, :, :] = aft[0, :, :] * (1 - aft[ii, :, :])
+
     return div
 
 
@@ -82,9 +86,9 @@ def make_divergence_dict(time_average, ref=HIVreference(subtype="any")):
             divergence_dict[region][patient_name]["non_rev"] = np.array(mean_non_rev_div)
             divergence_dict[region][patient_name]["all"] = np.array(mean_div)
             divergence_dict[region][patient_name]["dsi"] = np.array(patient.dsi)
-            divergence_dict[region][patient_name]["div_all"] = div_initial
-            divergence_dict[region][patient_name]["div_rev"] = rev_div
-            divergence_dict[region][patient_name]["div_non_rev"] = non_rev_div
+            divergence_dict[region][patient_name]["div_all"] = np.array(div_initial)
+            divergence_dict[region][patient_name]["div_rev"] = np.array(rev_div)
+            divergence_dict[region][patient_name]["div_non_rev"] = np.array(non_rev_div)
 
     # Computation of divergence average over all patients using interpolation
     for region in regions:
@@ -104,25 +108,40 @@ def make_divergence_dict(time_average, ref=HIVreference(subtype="any")):
 
     return divergence_dict
 
+def save_divergence_dict(divergence_dict):
+    """
+    Saves the divergence dict as a pickle.
+    """
+    with open("divergence_dict", "wb") as file:
+        pickle.dump(divergence_dict, file)
+
+
+def load_divergence_dict(file_name="divergence_dict"):
+    """
+    Load the divergence dict from pickle.
+    """
+    with open(file_name, "rb") as file:
+        divergence_dict = pickle.load(file)
+    return divergence_dict
+
 
 if __name__ == "__main__":
     colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
     time_average = np.arange(0, 3100, 100)
 
-    divergence_dict = make_divergence_dict(time_average)
+    divergence_dict = load_divergence_dict()
     all_div_vector = np.array([])
     for ii, region in enumerate(["env", "pol", "gag"]):
         for patient_name in patient_names:
             all_div_vector = np.concatenate(
-                (all_div_vector, divergence_dict[region][patient_name]["div_matrix"][-1, :].flatten()))
-
+                (all_div_vector, divergence_dict[region][patient_name]["div_all"][-1, :].flatten()))
 
     hist, bins = np.histogram(all_div_vector, bins=100)
     bins = bins[:-1]
 
     plt.figure()
-    plt.plot(bins, hist*bins)
+    plt.plot(bins, hist * bins)
     plt.grid()
     plt.xlabel("Divergence value")
     plt.ylabel("Relative contribution to divergence")

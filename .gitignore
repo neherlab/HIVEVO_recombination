@@ -125,3 +125,4 @@ dmypy.json
 
 figures
 trajectory_dict
+divergence_dict

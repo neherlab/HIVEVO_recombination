@@ -7,59 +7,61 @@ import sys
 import os
 import pickle
 from hivevo.patients import Patient
-from trajectory import load_trajectory_dict
-from proba_fix import get_nonuniform_bins
+from divergence import load_divergence_dict
 sys.path.append("../scripts/")
 
-def get_proba_fix(trajectories, nb_bin=8, freq_range=[0.1, 0.9]):
-    """
-    Gives the probability of fixation in each frequency bin.
-    """
+patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
+time_average = np.arange(0, 3100, 100)
 
-    frequency_bins = get_nonuniform_bins(nb_bin, bin_range=freq_range)
+divergence_dict = load_divergence_dict()
+div_vector = {}
+for ii, region in enumerate(["env", "pol", "gag"]):
+    div_vector[region] = {}
+    div_vector[region]["div_all"] = np.array([])
+    div_vector[region]["div_rev"] = np.array([])
+    div_vector[region]["div_non_rev"] = np.array([])
+    for patient_name in patient_names:
 
-    trajectories = [traj for traj in trajectories if traj.fixation != "active"]  # Remove active trajectories
-    traj_per_bin, fixed_per_bin, lost_per_bin, proba_fix = [], [], [], []
-    mean_freq_bin = []
+        div_vector[region]["div_all"] = np.concatenate(
+            (div_vector[region]["div_all"], divergence_dict[region][patient_name]["div_all"][:, :].flatten()))
+        div_vector[region]["div_rev"] = np.concatenate(
+            (div_vector[region]["div_rev"], divergence_dict[region][patient_name]["div_rev"][:, :].flatten()))
+        div_vector[region]["div_non_rev"] = np.concatenate(
+            (div_vector[region]["div_non_rev"], divergence_dict[region][patient_name]["div_non_rev"][:, :].flatten()))
 
-    for ii in range(len(frequency_bins) - 2):
-        bin_trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
-            traj.frequencies >= frequency_bins[ii], traj.frequencies < frequency_bins[ii + 2]), dtype=bool)]
+div_vector["all"] = {}
+for div_type in ["div_all", "div_rev", "div_non_rev"]:
+    div_vector["all"][div_type] = np.array([])
+    for region in ["env", "pol", "gag"]:
+        div_vector["all"][div_type] = np.concatenate((div_vector["all"][div_type], div_vector[region][div_type]))
 
-        nb_traj = len(bin_trajectories)
-        nb_fix = len([traj for traj in bin_trajectories if traj.fixation == "fixed"])
-        nb_lost = len([traj for traj in bin_trajectories if traj.fixation == "lost"])
+hist_dict = {}
+for ii, region in enumerate(["env", "pol", "gag"]):
+    hist_dict[region] = {}
+    for div_type in ["div_all", "div_rev", "div_non_rev"]:
+        hist_dict[region][div_type], bins = np.histogram(div_vector[region][div_type], bins=100, range=(0,1))
 
-        traj_per_bin = traj_per_bin + [nb_traj]
-        fixed_per_bin = fixed_per_bin + [nb_fix]
-        lost_per_bin = lost_per_bin + [nb_lost]
-        if nb_traj > 0:
-            proba_fix = proba_fix + [nb_fix / nb_traj]
-        else:
-            proba_fix = proba_fix + [None]
+bins = bins[:-1]
 
-        # Computes the "center" of the bin
-        tmp_mean = np.ma.array([])
-        for traj in bin_trajectories:
-            idxs = np.where(np.logical_and(traj.frequencies >=
-                                           frequency_bins[ii], traj.frequencies < frequency_bins[ii + 2], dtype=bool))[0]
-            tmp_mean = np.ma.append(tmp_mean, traj.frequencies[idxs[0]])
-        mean_freq_bin = mean_freq_bin + [np.ma.mean(tmp_mean)]
+colors = ["C0", "C1", "C2"]
+linestyle = ["-", "--", ":"]
 
-    err_proba_fix = np.array(proba_fix) * np.sqrt(1 / (np.array(fixed_per_bin) +
-                                                       1e-10) + 1 / np.array(traj_per_bin))
+plt.figure()
+for ii, region in enumerate(["env", "pol", "gag"]):
+    for jj, div_type in enumerate(["div_all", "div_rev", "div_non_rev"]):
+        tmp = hist_dict[region][div_type]*bins / np.sum(hist_dict[region][div_type]*bins)
+        tmp = np.cumsum(tmp)
+        plt.plot(bins, tmp, linestyle=linestyle[jj], color=colors[ii])
 
+for linestyle, label in zip(linestyle, ["all", "rev", "non_rev"]):
+    plt.plot([0], [0], linestyle=linestyle, color="k", label=label)
 
-    return mean_freq_bin, proba_fix, traj_per_bin, err_proba_fix
+for color, label in zip(colors, ["env", "pol", "gag"]):
+    plt.plot([0], [0], color=color, label=label)
 
-region = "pol"
-mut_type = "non_syn"
-trajectories = load_trajectory_dict()
-
-freq_bin, proba, nb_traj, _ = get_proba_fix(trajectories[region][mut_type], nb_bin=14)
-
-plt.plot(freq_bin, proba)
-plt.plot([0,1], [0,1], 'k--')
-plt.xlabel("Initial frequency")
-plt.ylabel("P_fix")
+plt.grid()
+plt.xlabel("Divergence value")
+plt.ylabel("Relative frequency (cumulative)")
+# plt.yscale("log")
+plt.legend()
 plt.show()
