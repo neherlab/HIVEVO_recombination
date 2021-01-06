@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 import pickle
+import copy
 from hivevo.patients import Patient
 import trajectory
 import tools
@@ -108,6 +109,7 @@ def make_divergence_dict(time_average, ref=HIVreference(subtype="any")):
 
     return divergence_dict
 
+
 def save_divergence_dict(divergence_dict):
     """
     Saves the divergence dict as a pickle.
@@ -125,12 +127,24 @@ def load_divergence_dict(file_name="divergence_dict"):
     return divergence_dict
 
 
+def WH_evo_rate(divergence_dict, time, regions=["env", "pol", "gag"]):
+    """
+    Compute the evolution rate (using gradient) for reversion and non-reversion in the given regions.
+    """
+    evo_rate_dict = copy.deepcopy(divergence_dict)
+    for key in evo_rate_dict.keys():
+        for key2 in evo_rate_dict[key]["all"].keys():
+            evo_rate_dict[key]["all"][key2] = np.gradient(evo_rate_dict[key]["all"][key2], time)
+        evo_rate_dict[key] = evo_rate_dict[key]["all"]
+    return evo_rate_dict
+
+
 if __name__ == "__main__":
     colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
     time_average = np.arange(0, 3100, 100)
 
-    divergence_dict = load_divergence_dict()
+    divergence_dict = make_divergence_dict(time_average)
     all_div_vector = np.array([])
     for ii, region in enumerate(["env", "pol", "gag"]):
         for patient_name in patient_names:
