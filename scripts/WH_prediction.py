@@ -19,7 +19,7 @@ def run_simulation(simulation_time, x_0, dt, rate_non_rev, rate_rev):
 
 evo_rates = {
     "env": {"rev": 4.359e-5, "non_rev": 6.734e-6},
-    "pol": {"rev": 2.500e-4, "non_rev": 2.946e-6},
+    "pol": {"rev": 2.500e-5, "non_rev": 2.946e-6},
     "gag": {"rev": 3.562e-5, "non_rev": 3.739e-6}
 }
 
