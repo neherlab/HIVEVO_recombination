@@ -79,55 +79,6 @@ def get_non_syn_mask(patient, region, aft):
     return mask
 
 
-def get_synonymous_factor(patient, region, aft):
-    """
-    Returns a 3D matrix (timepoint*nucleotide*patient_sequence_length) where each value is the proportion of divergence
-    due to synonymous mutations.
-    """
-    # set all values in aft to zero if they are not synonymous mutation or if they are the original nucleotide
-    syn_aft = np.copy(aft)
-    syn_mask = patient.get_syn_mutations(region, mask_constrained=False)
-    syn_mask = np.tile(syn_mask, (aft.shape[0], 1, 1))
-    mask = np.logical_and(syn_mask, ~tools.initial_idx_mask(patient, region, aft))
-    syn_aft[~mask] = 0
-
-    # sum aft for new mutations
-    non_ini_aft = np.ma.copy(aft)
-    non_ini_aft[tools.initial_idx_mask(patient, region, aft)] = 0
-    mut_sum = np.ma.sum(non_ini_aft, axis=1, keepdims=True)
-    mut_sum = np.tile(mut_sum, (1, aft.shape[1], 1))
-
-    syn_aft[np.nonzero(mut_sum)] = syn_aft[np.nonzero(mut_sum)] / mut_sum[np.nonzero(mut_sum)]
-    factor = np.sum(syn_aft, axis=1, keepdims=True)
-    factor = np.tile(factor, (1, aft.shape[1], 1))
-    factor[~tools.initial_idx_mask(patient, region, aft)] = 0
-    return factor
-
-
-def get_non_synonymous_factor(patient, region, aft):
-    """
-    Returns a 3D matrix (timepoint*nucleotide*patient_sequence_length) where each value is the proportion of divergence
-    due to non-synonymous mutations.
-    """
-    non_syn_aft = np.copy(aft)
-    non_syn_mask = ~patient.get_syn_mutations(region, mask_constrained=False)
-    non_syn_mask = np.tile(non_syn_mask, (aft.shape[0], 1, 1))
-    mask = np.logical_and(non_syn_mask, ~tools.initial_idx_mask(patient, region, aft))
-    non_syn_aft[~mask] = 0
-
-    # sum aft for new mutations
-    non_ini_aft = np.ma.copy(aft)
-    non_ini_aft[tools.initial_idx_mask(patient, region, aft)] = 0
-    mut_sum = np.ma.sum(non_ini_aft, axis=1, keepdims=True)
-    mut_sum = np.tile(mut_sum, (1, aft.shape[1], 1))
-
-    non_syn_aft[np.nonzero(mut_sum)] = non_syn_aft[np.nonzero(mut_sum)] / mut_sum[np.nonzero(mut_sum)]
-    factor = np.sum(non_syn_aft, axis=1, keepdims=True)
-    factor = np.tile(factor, (1, aft.shape[1], 1))
-    factor[~tools.initial_idx_mask(patient, region, aft)] = 0
-    return factor
-
-
 def divergence_matrix(aft):
     """
     Returns the divergence matrix in time (same shape as the aft).
@@ -155,8 +106,11 @@ def make_divergence_dict(time_average, ref=HIVreference(subtype="any")):
             aft = patient.get_allele_frequency_trajectories(region)
             div = divergence_matrix(aft)
 
-            initial_mask = tools.initial_idx_mask(patient, region, aft)
-            div_initial = np.reshape(div[initial_mask], (div.shape[0], -1))
+            # Select the 2D (nb_timepoint*nb_nucleotides) subset that correspond to initial indices only
+            initial_idx = patient.get_initial_indices(region)
+            div_initial = div[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis],
+                              initial_idx, np.arange(aft.shape[-1])]
+            div_initial = div_initial[:, 0, :]
             mean_div = np.mean(div_initial, axis=1)
 
             rev_mask = get_reversion_mask(patient, region, aft, ref)
@@ -167,36 +121,43 @@ def make_divergence_dict(time_average, ref=HIVreference(subtype="any")):
             non_rev_div = np.reshape(div[non_rev_mask], (div.shape[0], -1))
             mean_non_rev_div = np.mean(non_rev_div, axis=1)
 
-            # Synonymous analysis takes all sites, independant of wether it's mapped to consensus or not
-            syn_factor = get_synonymous_factor(patient, region, aft)
-            syn_div = syn_factor * div
-            syn_div = np.reshape(syn_div[initial_mask], (syn_div.shape[0], -1))
-            # Can't use mean because this would mean over all sites, including ones without mutations
-            mean_syn_div = np.sum(syn_div, axis=1) / np.sum(np.sum(syn_factor, axis=1), axis=1)
+            syn_mask = get_syn_mask(patient, region, aft)
+            syn_div = np.reshape(div[syn_mask], (aft.shape[0], -1))
+            mean_syn_div = np.sum(syn_div, axis=1) / aft.shape[-1]
 
-            non_syn_factor = get_non_synonymous_factor(patient, region, aft)
-            non_syn_div = non_syn_factor * div
-            non_syn_div = np.reshape(non_syn_div[initial_mask], (non_syn_div.shape[0], -1))
-            mean_non_syn_div = np.mean(non_syn_div, axis=1) / np.sum(np.sum(non_syn_factor, axis=1), axis=1)
+            non_syn_mask = get_non_syn_mask(patient, region, aft)
+            non_syn_div = np.reshape(div[non_syn_mask], (aft.shape[0], -1))
+            mean_non_syn_div = np.sum(non_syn_div, axis=1) / aft.shape[-1]
+
+            syn_first = div_initial[:, 0::3]
+            syn_second = div_initial[:, 1::3]
+            syn_third = div_initial[:, 2::3]
+
+            mean_syn_first = np.mean(syn_first, axis=1)
+            mean_syn_second = np.mean(syn_second, axis=1)
+            mean_syn_third = np.mean(syn_third, axis=1)
 
             # Transforming to regular array as mask is useless after averaging
-            # divergence_dict[region][patient_name]["rev"] = np.array(mean_rev_div)
-            # divergence_dict[region][patient_name]["non_rev"] = np.array(mean_non_rev_div)
-            # divergence_dict[region][patient_name]["syn"] = np.array(mean_syn_div)
-            # divergence_dict[region][patient_name]["non_syn"] = np.array(mean_non_syn_div)
-            # divergence_dict[region][patient_name]["all"] = np.array(mean_div)
-            # divergence_dict[region][patient_name]["dsi"] = np.array(patient.dsi)
-            # divergence_dict[region][patient_name]["div_all"] = np.array(div_initial)
-            # divergence_dict[region][patient_name]["div_rev"] = np.array(rev_div)
-            # divergence_dict[region][patient_name]["div_non_rev"] = np.array(non_rev_div)
-            # divergence_dict[region][patient_name]["div_syn"] = np.array(syn_div)
-            # divergence_dict[region][patient_name]["div_non_syn"] = np.array(non_syn_div)
+            divergence_dict[region][patient_name]["rev"] = np.array(mean_rev_div)
+            divergence_dict[region][patient_name]["non_rev"] = np.array(mean_non_rev_div)
+            divergence_dict[region][patient_name]["syn"] = np.array(mean_syn_div)
+            divergence_dict[region][patient_name]["non_syn"] = np.array(mean_non_syn_div)
+            divergence_dict[region][patient_name]["all"] = np.array(mean_div)
+            divergence_dict[region][patient_name]["dsi"] = np.array(patient.dsi)
+            divergence_dict[region][patient_name]["div_all"] = np.array(div_initial)
+            divergence_dict[region][patient_name]["div_rev"] = np.array(rev_div)
+            divergence_dict[region][patient_name]["div_non_rev"] = np.array(non_rev_div)
+            divergence_dict[region][patient_name]["div_syn"] = np.array(syn_div)
+            divergence_dict[region][patient_name]["div_non_syn"] = np.array(non_syn_div)
+            divergence_dict[region][patient_name]["first"] = np.array(mean_syn_first)
+            divergence_dict[region][patient_name]["second"] = np.array(mean_syn_second)
+            divergence_dict[region][patient_name]["third"] = np.array(mean_syn_third)
 
     # Computation of divergence average over all patients using interpolation
     for region in regions:
         time = time_average
         divergence_dict[region]["all"] = {}
-        for mut_type in ["rev", "non_rev", "all", "syn", "non_syn"]:
+        for mut_type in ["rev", "non_rev", "all", "syn", "non_syn", "first", "second", "third"]:
             nb_traj = np.zeros_like(time)
             average_divergence = np.zeros_like(time, dtype=float)
             for patient_name in patient_names:
@@ -250,13 +211,20 @@ if __name__ == "__main__":
     # fontsize = 16
     #
     # plt.figure(figsize=(14, 10))
-    # for ii, region in enumerate(["env", "pol", "gag"]):
-    #     plt.plot(time_average, divergence_dict[region]["all"]["syn"], '-', color=colors[ii], label=region)
-    #     plt.plot(time_average, divergence_dict[region]["all"]["non_syn"], '--', color=colors[ii])
-    #     plt.plot(time_average, divergence_dict[region]["all"]["all"], ':', color=colors[ii])
-    # plt.plot([0], [0], 'k-', label="Synonymous")
-    # plt.plot([0], [0], 'k--', label="Non-synonymous")
-    # plt.plot([0], [0], 'k:', label="All")
+    # region = "gag"
+    # plt.plot(time_average, divergence_dict[region]["all"]["syn"], label="syn")
+    # plt.plot(time_average, divergence_dict[region]["all"]["non_syn"], label="non_syn")
+    # plt.plot(time_average, divergence_dict[region]["all"]["all"], label="all")
+    # plt.plot(time_average, divergence_dict[region]["all"]["first"], label="first")
+    # plt.plot(time_average, divergence_dict[region]["all"]["second"], label="second")
+    # plt.plot(time_average, divergence_dict[region]["all"]["third"], label="third")
+    # # for ii, region in enumerate(["env", "pol", "gag"]):
+    # #     plt.plot(time_average, divergence_dict[region]["all"]["syn"], '-', color=colors[ii], label=region)
+    # #     plt.plot(time_average, divergence_dict[region]["all"]["non_syn"], '--', color=colors[ii])
+    # #     plt.plot(time_average, divergence_dict[region]["all"]["all"], ':', color=colors[ii])
+    # # plt.plot([0], [0], 'k-', label="Synonymous")
+    # # plt.plot([0], [0], 'k--', label="Non-synonymous")
+    # # plt.plot([0], [0], 'k:', label="All")
     # plt.grid()
     # plt.xlabel("Time since infection [days]", fontsize=fontsize)
     # plt.ylabel("Divergence", fontsize=fontsize)
@@ -267,26 +235,38 @@ if __name__ == "__main__":
     region = "env"
     aft = patient.get_allele_frequency_trajectories(region)
     div = divergence_matrix(aft)
-    initial_mask = tools.initial_idx_mask(patient, region, aft)
 
-    div_tot = np.reshape(div[initial_mask], (div.shape[0], -1))
+
+    # Select the 2D (nb_timepoint*nb_nucleotides) subset that correspond to initial indices only
+    initial_idx = patient.get_initial_indices(region)
+    div_tot = div[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
+    div_tot = div_tot[:, 0, :]
     mean_div = np.mean(div_tot, axis=1)
-
-    # syn_factor = get_synonymous_factor(patient, region, aft)
-    # syn_div = syn_factor * div
-    # syn_div = np.reshape(syn_div[initial_mask], (syn_div.shape[0], -1))
-    # mean_syn_div = np.sum(syn_div, axis=1) / np.sum(np.sum(syn_factor, axis=1), axis=1)# Can't use mean because this would mean over all sites, including ones without mutations
-    #
-    # # Error with the non_syn_factor, too many values are present
-    # non_syn_factor = get_non_synonymous_factor(patient, region, aft)
-    # non_syn_div = non_syn_factor * div
-    # non_syn_div = np.reshape(non_syn_div[initial_mask], (non_syn_div.shape[0], -1))
-    # mean_non_syn_div = np.mean(non_syn_div, axis=1) / np.sum(np.sum(non_syn_factor, axis=1), axis=1)
 
     syn_mask = get_syn_mask(patient, region, aft)
     syn_div = np.reshape(div[syn_mask], (aft.shape[0], -1))
-    mean_syn_div = np.mean(syn_div, axis=1)
+    mean_syn_div = np.sum(syn_div, axis=1) / aft.shape[-1]
 
     non_syn_mask = get_non_syn_mask(patient, region, aft)
     non_syn_div = np.reshape(div[non_syn_mask], (aft.shape[0], -1))
-    mean_non_syn_div = np.mean(non_syn_div, axis=1)
+    mean_non_syn_div = np.sum(non_syn_div, axis=1) / aft.shape[-1]
+
+    syn_first = div_tot[:, 0::3]
+    syn_second = div_tot[:, 1::3]
+    syn_third = div_tot[:, 2::3]
+
+    mean_syn_first = np.mean(syn_first, axis=1)
+    mean_syn_second = np.mean(syn_second, axis=1)
+    mean_syn_third = np.mean(syn_third, axis=1)
+
+    plt.figure()
+    plt.plot(patient.dsi, mean_syn_first, label="first")
+    plt.plot(patient.dsi, mean_syn_second, label="second")
+    plt.plot(patient.dsi, mean_syn_third, label="third")
+    plt.plot(patient.dsi, mean_syn_div, label="syn")
+    plt.plot(patient.dsi, mean_non_syn_div, label="non_syn")
+    plt.legend()
+    plt.xlabel("Days")
+    plt.ylabel("Divergence")
+    plt.grid()
+    plt.show()
