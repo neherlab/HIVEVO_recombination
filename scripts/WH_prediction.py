@@ -57,16 +57,36 @@ def initialize_fixed_point(sequence_length, rate_rev, rate_non_rev):
 
 
 def run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time):
+    """
+    Runs a simulation and stores the sampled sequences the matrix sequences (nb_nucleotide * nb_sequences).
+    x is modified during the simulation. The original sequence is included in the sequences matrix, in the first row.
+    """
     ii = 0
     nb_samples = simulation_time // sampling_time
-    sequences = np.zeros(shape=(len(x), nb_samples), dtype=bool)
+    sequences = np.zeros(shape=(len(x), nb_samples+1), dtype=bool)
 
     for t in time:
-        x = simulation_step(x, dt, rate_rev, rate_non_rev)
-
-        if (t % sampling_time == 0) and (t != 0):
+        if (t % sampling_time == 0):
             sequences[:, ii] = x
             ii += 1
+
+        x = simulation_step(x, dt, rate_rev, rate_non_rev)
+    return sequences
+
+
+def run_simulation_group(x_0, simulation_time, dt, rate_rev, rate_non_rev, sampling_time, nb_sim):
+    """
+    Runs several simulation starting from the same x_0, and returns a 3D matrix containing the sequences
+    (nb_nucleotide * nb_sequences * nb_simulation)
+    """
+    nb_samples = simulation_time // sampling_time
+    sequences = np.zeros(shape=(len(x_0), nb_samples+1, nb_sim), dtype=bool)
+
+    for ii in range(nb_sim):
+        x = np.copy(x_0)
+        sim_matrix = run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time)
+        sequences[:,:,ii] = sim_matrix
+
     return sequences
 
 
@@ -78,6 +98,7 @@ evo_rates = {
 
 patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
 regions = ["env", "pol", "gag"]
+nb_simulation = 2
 simulation_time = 3650  # in days
 dt = 1
 time = np.arange(0, simulation_time, dt)
@@ -88,4 +109,4 @@ rate_non_rev = evo_rates["env"]["non_rev"]
 
 # True is consensus, False is non consensus
 x_0 = initialize_fixed_point(sequence_length, rate_rev, rate_non_rev)
-sequences = run_simulation(x_0, simulation_time, dt, rate_rev, rate_non_rev, sampling_time)
+sequences = run_simulation_group(x_0, simulation_time, dt, rate_rev, rate_non_rev, sampling_time, nb_simulation)
