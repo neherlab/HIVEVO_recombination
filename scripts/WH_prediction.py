@@ -6,11 +6,13 @@ import matplotlib.pyplot as plt
 import sys
 import os
 import random
+from numba import jit
 from hivevo.patients import Patient
 from divergence import load_divergence_dict, WH_evo_rate
 sys.path.append("../scripts/")
 
 
+@jit(nopython=True)  # makes it ~10 times faster
 def simulation_step(x, dt, rate_rev, rate_non_rev):
     "Returns the boolean vector x(t+dt) from x(t). Time unit is day, rates are per day and per nucleotide."
     nb_consensus = len(x[x == True])
@@ -29,14 +31,14 @@ def simulation_step(x, dt, rate_rev, rate_non_rev):
     return x
 
 
+@jit(nopython=True)
 def random_round(number):
     "Stochastic rounding of number. For example, random_round(3.14) will give 3 with prba 0.86, and 4 with proba 0.14."
     floor = int(number)
     remainder = number % 1
-    number = floor
     if random.random() < remainder:
-        number = floor + 1
-    return number
+        floor += 1
+    return floor
 
 
 def initialize_seq(sequence_length, freq_non_consensus):
@@ -54,6 +56,20 @@ def initialize_fixed_point(sequence_length, rate_rev, rate_non_rev):
     return initialize_seq(sequence_length, freq_non_consensus)
 
 
+def run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time):
+    ii = 0
+    nb_samples = simulation_time // sampling_time
+    sequences = np.zeros(shape=(len(x), nb_samples), dtype=bool)
+
+    for t in time:
+        x = simulation_step(x, dt, rate_rev, rate_non_rev)
+
+        if (t % sampling_time == 0) and (t != 0):
+            sequences[:, ii] = x
+            ii += 1
+    return sequences
+
+
 evo_rates = {
     "env": {"rev": 4.359e-5, "non_rev": 6.734e-6},
     "pol": {"rev": 2.500e-5, "non_rev": 2.946e-6},
@@ -64,11 +80,12 @@ patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
 regions = ["env", "pol", "gag"]
 simulation_time = 3650  # in days
 dt = 1
-
+time = np.arange(0, simulation_time, dt)
+sampling_time = 100 * dt
 sequence_length = 2500
 rate_rev = evo_rates["env"]["rev"]
 rate_non_rev = evo_rates["env"]["non_rev"]
 
 # True is consensus, False is non consensus
 x_0 = initialize_fixed_point(sequence_length, rate_rev, rate_non_rev)
-x = simulation_step(x_0, dt, rate_rev, rate_non_rev)
+sequences = run_simulation(x_0, simulation_time, dt, rate_rev, rate_non_rev, sampling_time)
