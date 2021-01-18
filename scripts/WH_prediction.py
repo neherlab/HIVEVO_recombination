@@ -2,7 +2,9 @@
 import filenames
 from hivevo.HIVreference import HIVreference
 import numpy as np
+from scipy.spatial import distance
 import matplotlib.pyplot as plt
+import math
 import sys
 import os
 import random
@@ -52,6 +54,7 @@ def run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time
     x is modified during the simulation. The original sequence is included in the sequences matrix, in the first row.
     """
     ii = 0
+    time = np.arange(0, simulation_time+1, dt)
     nb_samples = simulation_time // sampling_time
     sequences = np.zeros(shape=(len(x), nb_samples + 1), dtype=bool)
 
@@ -80,24 +83,59 @@ def run_simulation_group(x_0, simulation_time, dt, rate_rev, rate_non_rev, sampl
     return sequences
 
 
-evo_rates = {
-    "env": {"rev": 4.359e-5, "non_rev": 6.734e-6},
-    "pol": {"rev": 2.500e-5, "non_rev": 2.946e-6},
-    "gag": {"rev": 3.562e-5, "non_rev": 3.739e-6}
-}
+@jit(nopython=True)
+def hamming_distance(a, b):
+    """
+    Returns the hamming distance between sequence a and b. Sequences must be 1D and have the same length.
+    """
+    return np.count_nonzero(a != b)
 
-patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-regions = ["env", "pol", "gag"]
-nb_simulation = 2
-simulation_time = 3650  # in days
-dt = 1
-time = np.arange(0, simulation_time, dt)
-sampling_time = 100 * dt
-sequence_length = 2500
-rate_rev = evo_rates["env"]["rev"]
-rate_non_rev = evo_rates["env"]["non_rev"]
 
-# True is consensus, False is non consensus
-x_0 = initialize_fixed_point(sequence_length, rate_rev, rate_non_rev)
-sequences = run_simulation_group(x_0, simulation_time, dt, rate_rev,
-                                 rate_non_rev, sampling_time, nb_simulation)
+def distance_to_initial(sequences):
+    """
+    Returns a 2D matrix (timepoint*nb_sim) of hamming distance to the initial sequence.
+    """
+    result = np.zeros((sequences.shape[1], sequences.shape[2]))
+    for ii in range(sequences.shape[1]):
+        for jj in range(sequences.shape[2]):
+            result[ii, jj] = hamming_distance(sequences[:, 0, jj], sequences[:, ii, jj])
+    return result
+
+
+if __name__ == '__main__':
+    evo_rates = {
+        "env": {"rev": 4.359e-5, "non_rev": 6.734e-6},
+        "pol": {"rev": 2.500e-5, "non_rev": 2.946e-6},
+        "gag": {"rev": 3.562e-5, "non_rev": 3.739e-6}
+    }
+
+    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
+    regions = ["env", "pol", "gag"]
+    nb_simulation = 10
+    simulation_time = 36500  # in days
+    dt = 10
+    time = np.arange(0, simulation_time+1, dt)
+    sampling_time = 10 * dt
+    sequence_length = 2500
+    rate_rev = evo_rates["env"]["rev"]
+    rate_non_rev = evo_rates["env"]["non_rev"]
+
+    # True is consensus, False is non consensus
+    x_0 = initialize_fixed_point(sequence_length, rate_rev, rate_non_rev)
+    sequences = run_simulation_group(x_0, simulation_time, dt, rate_rev,
+                                     rate_non_rev, sampling_time, nb_simulation)
+    distance_initial = distance_to_initial(sequences)
+    mean_distance_initial = np.mean(distance_initial, axis=-1)
+
+
+    x = time[::10]
+    plt.figure()
+    plt.plot(x, mean_distance_initial, label="Mean distance to initial")
+    plt.plot(x, np.sqrt(x), label="Square root")
+    plt.xlabel("Timepoint")
+    plt.ylabel("Hamming distance to initial sequence")
+    plt.legend()
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.grid()
+    plt.show()
