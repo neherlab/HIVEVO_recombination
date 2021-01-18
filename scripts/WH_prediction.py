@@ -17,8 +17,8 @@ def simulation_step(x, dt, rate_rev, rate_non_rev):
     "Returns the boolean vector x(t+dt) from x(t). Time unit is day, rates are per day and per nucleotide."
     nb_consensus = len(x[x == True])
     nb_non_consensus = len(x[x == False])
-    nb_rev = random_round(nb_non_consensus * rate_rev * dt)
-    nb_non_rev = random_round(nb_consensus * rate_non_rev * dt)
+    nb_rev = np.random.poisson(nb_non_consensus * rate_rev * dt)
+    nb_non_rev = np.random.poisson(nb_consensus * rate_non_rev * dt)
 
     idxs_consensus = np.arange(len(x))[x == True]
     idxs_non_consensus = np.arange(len(x))[x == False]
@@ -29,16 +29,6 @@ def simulation_step(x, dt, rate_rev, rate_non_rev):
     idxs_mutation = np.concatenate((mut_rev, mut_non_rev))
     x[idxs_mutation] = ~x[idxs_mutation]
     return x
-
-
-@jit(nopython=True)
-def random_round(number):
-    "Stochastic rounding of number. For example, random_round(3.14) will give 3 with prba 0.86, and 4 with proba 0.14."
-    floor = int(number)
-    remainder = number % 1
-    if random.random() < remainder:
-        floor += 1
-    return floor
 
 
 def initialize_seq(sequence_length, freq_non_consensus):
@@ -63,7 +53,7 @@ def run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time
     """
     ii = 0
     nb_samples = simulation_time // sampling_time
-    sequences = np.zeros(shape=(len(x), nb_samples+1), dtype=bool)
+    sequences = np.zeros(shape=(len(x), nb_samples + 1), dtype=bool)
 
     for t in time:
         if (t % sampling_time == 0):
@@ -80,12 +70,12 @@ def run_simulation_group(x_0, simulation_time, dt, rate_rev, rate_non_rev, sampl
     (nb_nucleotide * nb_sequences * nb_simulation)
     """
     nb_samples = simulation_time // sampling_time
-    sequences = np.zeros(shape=(len(x_0), nb_samples+1, nb_sim), dtype=bool)
+    sequences = np.zeros(shape=(len(x_0), nb_samples + 1, nb_sim), dtype=bool)
 
     for ii in range(nb_sim):
         x = np.copy(x_0)
         sim_matrix = run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time)
-        sequences[:,:,ii] = sim_matrix
+        sequences[:, :, ii] = sim_matrix
 
     return sequences
 
@@ -109,4 +99,5 @@ rate_non_rev = evo_rates["env"]["non_rev"]
 
 # True is consensus, False is non consensus
 x_0 = initialize_fixed_point(sequence_length, rate_rev, rate_non_rev)
-sequences = run_simulation_group(x_0, simulation_time, dt, rate_rev, rate_non_rev, sampling_time, nb_simulation)
+sequences = run_simulation_group(x_0, simulation_time, dt, rate_rev,
+                                 rate_non_rev, sampling_time, nb_simulation)
