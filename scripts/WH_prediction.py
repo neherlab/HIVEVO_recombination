@@ -54,7 +54,7 @@ def run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time
     x is modified during the simulation. The original sequence is included in the sequences matrix, in the first row.
     """
     ii = 0
-    time = np.arange(0, simulation_time+1, dt)
+    time = np.arange(0, simulation_time + 1, dt)
     nb_samples = simulation_time // sampling_time
     sequences = np.zeros(shape=(len(x), nb_samples + 1), dtype=bool)
 
@@ -102,6 +102,20 @@ def distance_to_initial(sequences):
     return result
 
 
+def distance_to_pairs(sequences):
+    """
+    Returns a 2D matrix (timepoint*nb_pair_combination) of distance between sequences at each time point.
+    """
+    result = np.zeros((sequences.shape[1], math.comb(sequences.shape[2], 2)))
+    for ii in range(sequences.shape[1]):
+        counter = 0
+        for jj in range(sequences.shape[2]):
+            for kk in range(jj + 1, sequences.shape[2]):
+                result[ii, counter] = hamming_distance(sequences[:, ii, jj], sequences[:, ii, kk])
+                counter += 1
+    return result
+
+
 if __name__ == '__main__':
     evo_rates = {
         "env": {"rev": 4.359e-5, "non_rev": 6.734e-6},
@@ -114,7 +128,7 @@ if __name__ == '__main__':
     nb_simulation = 10
     simulation_time = 365000  # in days
     dt = 10
-    time = np.arange(0, simulation_time+1, dt)
+    time = np.arange(0, simulation_time + 1, dt)
     sampling_time = 10 * dt
     sequence_length = 2500
     rate_rev = evo_rates["gag"]["rev"]
@@ -126,14 +140,19 @@ if __name__ == '__main__':
                                      rate_non_rev, sampling_time, nb_simulation)
     distance_initial = distance_to_initial(sequences)
     mean_distance_initial = np.mean(distance_initial, axis=-1)
+    distance_pairs = distance_to_pairs(sequences)
+    mean_distance_pairs = np.mean(distance_pairs, axis=-1)
 
+    x = time[::10]
+    saturation = 2 * rate_rev * rate_non_rev * len(x_0) / (rate_rev + rate_non_rev)**2
+    tau = 1 / (rate_rev + rate_non_rev)
+    theory = saturation * (1 - np.exp(-time / tau))
 
-    x = time[::10] / 365
     plt.figure()
     plt.plot(x, mean_distance_initial, label="Mean distance to initial")
-    # plt.plot(x, 0.1*x, "k--", label="x")
+    plt.plot(time, theory, "k--", label="x")
     plt.xlabel("Time [years]")
-    plt.ylabel("Hamming distance to initial sequence")
+    plt.ylabel("Hamming distance")
     plt.legend()
     # plt.xscale("log")
     # plt.yscale("log")
