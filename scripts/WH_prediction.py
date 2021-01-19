@@ -112,13 +112,13 @@ if __name__ == '__main__':
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
     regions = ["env", "pol", "gag"]
     nb_simulation = 10
-    simulation_time = 36500  # in days
+    simulation_time = 365000  # in days
     dt = 10
     time = np.arange(0, simulation_time+1, dt)
     sampling_time = 10 * dt
     sequence_length = 2500
-    rate_rev = evo_rates["env"]["rev"]
-    rate_non_rev = evo_rates["env"]["non_rev"]
+    rate_rev = evo_rates["gag"]["rev"]
+    rate_non_rev = evo_rates["gag"]["non_rev"]
 
     # True is consensus, False is non consensus
     x_0 = initialize_fixed_point(sequence_length, rate_rev, rate_non_rev)
@@ -128,14 +128,14 @@ if __name__ == '__main__':
     mean_distance_initial = np.mean(distance_initial, axis=-1)
 
 
-    x = time[::10]
+    x = time[::10] / 365
     plt.figure()
     plt.plot(x, mean_distance_initial, label="Mean distance to initial")
-    plt.plot(x, np.sqrt(x), label="Square root")
-    plt.xlabel("Timepoint")
+    # plt.plot(x, 0.1*x, "k--", label="x")
+    plt.xlabel("Time [years]")
     plt.ylabel("Hamming distance to initial sequence")
     plt.legend()
-    plt.xscale("log")
-    plt.yscale("log")
+    # plt.xscale("log")
+    # plt.yscale("log")
     plt.grid()
     plt.show()
