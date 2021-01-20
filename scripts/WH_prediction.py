@@ -17,13 +17,13 @@ sys.path.append("../scripts/")
 @jit(nopython=True)  # makes it ~10 times faster
 def simulation_step(x, dt, rate_rev, rate_non_rev):
     "Returns the boolean vector x(t+dt) from x(t). Time unit is day, rates are per day and per nucleotide."
-    nb_consensus = len(x[x == True])
-    nb_non_consensus = len(x[x == False])
+    nb_consensus = len(x[x])
+    nb_non_consensus = len(x[~x])
     nb_rev = np.random.poisson(nb_non_consensus * rate_rev * dt)
     nb_non_rev = np.random.poisson(nb_consensus * rate_non_rev * dt)
 
-    idxs_consensus = np.arange(len(x))[x == True]
-    idxs_non_consensus = np.arange(len(x))[x == False]
+    idxs_consensus = np.where(x)
+    idxs_non_consensus = np.where(~x)
 
     mut_rev = np.random.choice(idxs_non_consensus, nb_rev)
     mut_non_rev = np.random.choice(idxs_consensus, nb_non_rev)
