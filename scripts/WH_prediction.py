@@ -18,7 +18,7 @@ sys.path.append("../scripts/")
 def simulation_step(x, dt, rate_rev, rate_non_rev):
     "Returns the boolean vector x(t+dt) from x(t). Time unit is day, rates are per day and per nucleotide."
     nb_consensus = len(x[x])
-    nb_non_consensus = len(x[~x])
+    nb_non_consensus = len(x_0) - nb_consensus
     nb_rev = np.random.poisson(nb_non_consensus * rate_rev * dt)
     nb_non_rev = np.random.poisson(nb_consensus * rate_non_rev * dt)
 
