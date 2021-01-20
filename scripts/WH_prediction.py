@@ -22,8 +22,8 @@ def simulation_step(x, dt, rate_rev, rate_non_rev):
     nb_rev = np.random.poisson(nb_non_consensus * rate_rev * dt)
     nb_non_rev = np.random.poisson(nb_consensus * rate_non_rev * dt)
 
-    idxs_consensus = np.where(x)
-    idxs_non_consensus = np.where(~x)
+    idxs_consensus = np.where(x)[0]
+    idxs_non_consensus = np.where(~x)[0]
 
     mut_rev = np.random.choice(idxs_non_consensus, nb_rev)
     mut_non_rev = np.random.choice(idxs_consensus, nb_non_rev)
