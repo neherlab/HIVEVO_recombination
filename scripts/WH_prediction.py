@@ -18,7 +18,7 @@ sys.path.append("../scripts/")
 def simulation_step(x, dt, rate_rev, rate_non_rev):
     "Returns the boolean vector x(t+dt) from x(t). Time unit is day, rates are per day and per nucleotide."
     nb_consensus = len(x[x])
-    nb_non_consensus = len(x_0) - nb_consensus
+    nb_non_consensus = len(x) - nb_consensus
     nb_rev = np.random.poisson(nb_non_consensus * rate_rev * dt)
     nb_non_rev = np.random.poisson(nb_consensus * rate_non_rev * dt)
 
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     rate_non_rev = evo_rates["gag"]["non_rev"]
 
     # True is consensus, False is non consensus
-    x_0 = initialize_fixed_point(sequence_length, rate_rev, rate_non_rev)
+    x_0 = np.ones(sequence_length, dtype=bool)
     sequences = run_simulation_group(x_0, simulation_time, dt, rate_rev,
                                      rate_non_rev, sampling_time, nb_simulation)
     distance_initial = distance_to_initial(sequences)
