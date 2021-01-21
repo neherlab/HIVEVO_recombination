@@ -153,24 +153,24 @@ def make_divergence_dict(time_average, ref=HIVreference(subtype="any")):
             mean_non_syn_non_rev = np.mean(non_syn_non_rev_div, axis=1)
 
             # Transforming to regular array as mask is useless after averaging
-            divergence_dict[region][patient_name]["rev"] = np.array(mean_rev_div)
-            divergence_dict[region][patient_name]["non_rev"] = np.array(mean_non_rev_div)
-            divergence_dict[region][patient_name]["syn"] = np.array(mean_syn_div)
-            divergence_dict[region][patient_name]["non_syn"] = np.array(mean_non_syn_div)
-            divergence_dict[region][patient_name]["all"] = np.array(mean_div)
-            divergence_dict[region][patient_name]["dsi"] = np.array(patient.dsi)
-            divergence_dict[region][patient_name]["div_all"] = np.array(div_initial)
-            divergence_dict[region][patient_name]["div_rev"] = np.array(rev_div)
-            divergence_dict[region][patient_name]["div_non_rev"] = np.array(non_rev_div)
-            divergence_dict[region][patient_name]["div_syn"] = np.array(syn_div)
-            divergence_dict[region][patient_name]["div_non_syn"] = np.array(non_syn_div)
-            divergence_dict[region][patient_name]["first"] = np.array(mean_syn_first)
-            divergence_dict[region][patient_name]["second"] = np.array(mean_syn_second)
-            divergence_dict[region][patient_name]["third"] = np.array(mean_syn_third)
-            divergence_dict[region][patient_name]["syn_rev"] = np.array(mean_syn_rev)
-            divergence_dict[region][patient_name]["syn_non_rev"] = np.array(mean_syn_non_rev)
-            divergence_dict[region][patient_name]["non_syn_rev"] = np.array(mean_non_syn_rev)
-            divergence_dict[region][patient_name]["non_syn_non_rev"] = np.array(mean_non_syn_non_rev)
+            # divergence_dict[region][patient_name]["rev"] = np.array(mean_rev_div)
+            # divergence_dict[region][patient_name]["non_rev"] = np.array(mean_non_rev_div)
+            # divergence_dict[region][patient_name]["syn"] = np.array(mean_syn_div)
+            # divergence_dict[region][patient_name]["non_syn"] = np.array(mean_non_syn_div)
+            # divergence_dict[region][patient_name]["all"] = np.array(mean_div)
+            # divergence_dict[region][patient_name]["dsi"] = np.array(patient.dsi)
+            # divergence_dict[region][patient_name]["div_all"] = np.array(div_initial)
+            # divergence_dict[region][patient_name]["div_rev"] = np.array(rev_div)
+            # divergence_dict[region][patient_name]["div_non_rev"] = np.array(non_rev_div)
+            # divergence_dict[region][patient_name]["div_syn"] = np.array(syn_div)
+            # divergence_dict[region][patient_name]["div_non_syn"] = np.array(non_syn_div)
+            # divergence_dict[region][patient_name]["first"] = np.array(mean_syn_first)
+            # divergence_dict[region][patient_name]["second"] = np.array(mean_syn_second)
+            # divergence_dict[region][patient_name]["third"] = np.array(mean_syn_third)
+            # divergence_dict[region][patient_name]["syn_rev"] = np.array(mean_syn_rev)
+            # divergence_dict[region][patient_name]["syn_non_rev"] = np.array(mean_syn_non_rev)
+            # divergence_dict[region][patient_name]["non_syn_rev"] = np.array(mean_non_syn_rev)
+            # divergence_dict[region][patient_name]["non_syn_non_rev"] = np.array(mean_non_syn_non_rev)
 
     # Computation of divergence average over all patients using interpolation
     for region in regions:
@@ -224,67 +224,28 @@ def WH_evo_rate(divergence_dict, time, regions=["env", "pol", "gag"]):
 if __name__ == "__main__":
     colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    time_average = np.arange(0, 3100, 100)
-
-    divergence_dict = make_divergence_dict(time_average)
-    colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
-    fontsize = 16
-
-    plt.figure(figsize=(14, 10))
     region = "gag"
-    plt.plot(time_average, divergence_dict[region]["all"]["syn_rev"], label="syn_rev")
-    plt.plot(time_average, divergence_dict[region]["all"]["syn_non_rev"], label="syn_non_rev")
-    plt.plot(time_average, divergence_dict[region]["all"]["non_syn_rev"], label="non_syn_rev")
-    plt.plot(time_average, divergence_dict[region]["all"]["non_syn_non_rev"], label="non_syn_non_rev")
-    plt.plot(time_average, divergence_dict[region]["all"]["all"], label="all")
-    # for ii, region in enumerate(["env", "pol", "gag"]):
-    #     plt.plot(time_average, divergence_dict[region]["all"]["syn"], '-', color=colors[ii], label=region)
-    #     plt.plot(time_average, divergence_dict[region]["all"]["non_syn"], '--', color=colors[ii])
-    #     plt.plot(time_average, divergence_dict[region]["all"]["all"], ':', color=colors[ii])
-    # plt.plot([0], [0], 'k-', label="Synonymous")
-    # plt.plot([0], [0], 'k--', label="Non-synonymous")
-    # plt.plot([0], [0], 'k:', label="All")
-    plt.grid()
-    plt.xlabel("Time since infection [days]", fontsize=fontsize)
-    plt.ylabel("Divergence", fontsize=fontsize)
-    plt.legend(fontsize=fontsize)
-    plt.show()
-
-    # patient = Patient.load("p1")
-    # region = "env"
-    # aft = patient.get_allele_frequency_trajectories(region)
-    # div = divergence_matrix(aft)
+    # time_average = np.arange(0, 3100, 100)
     #
-    # # Select the 2D (nb_timepoint*nb_nucleotides) subset that correspond to initial indices only
-    # initial_idx = patient.get_initial_indices(region)
-    # div_tot = div[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
-    # div_tot = div_tot[:, 0, :]
-    # mean_div = np.mean(div_tot, axis=1)
+    # divergence_dict = make_divergence_dict(time_average)
+    # colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
+    # fontsize = 16
     #
-    # syn_mask = get_syn_mask(patient, region, aft)
-    # syn_div = np.reshape(div[syn_mask], (aft.shape[0], -1))
-    # mean_syn_div = np.sum(syn_div, axis=1) / aft.shape[-1]
-    #
-    # non_syn_mask = get_non_syn_mask(patient, region, aft)
-    # non_syn_div = np.reshape(div[non_syn_mask], (aft.shape[0], -1))
-    # mean_non_syn_div = np.sum(non_syn_div, axis=1) / aft.shape[-1]
-    #
-    # syn_first = div_tot[:, 0::3]
-    # syn_second = div_tot[:, 1::3]
-    # syn_third = div_tot[:, 2::3]
-    #
-    # mean_syn_first = np.mean(syn_first, axis=1)
-    # mean_syn_second = np.mean(syn_second, axis=1)
-    # mean_syn_third = np.mean(syn_third, axis=1)
-    #
-    # plt.figure()
-    # plt.plot(patient.dsi, mean_syn_first, label="first")
-    # plt.plot(patient.dsi, mean_syn_second, label="second")
-    # plt.plot(patient.dsi, mean_syn_third, label="third")
-    # plt.plot(patient.dsi, mean_syn_div, label="syn")
-    # plt.plot(patient.dsi, mean_non_syn_div, label="non_syn")
-    # plt.legend()
-    # plt.xlabel("Days")
-    # plt.ylabel("Divergence")
+    # plt.figure(figsize=(14, 10))
+    # plt.plot(time_average, divergence_dict[region]["all"]["syn_rev"], label="syn_rev")
+    # plt.plot(time_average, divergence_dict[region]["all"]["syn_non_rev"], label="syn_non_rev")
+    # plt.plot(time_average, divergence_dict[region]["all"]["non_syn_rev"], label="non_syn_rev")
+    # plt.plot(time_average, divergence_dict[region]["all"]["non_syn_non_rev"], label="non_syn_non_rev")
+    # plt.plot(time_average, divergence_dict[region]["all"]["all"], label="all")
+    # # for ii, region in enumerate(["env", "pol", "gag"]):
+    # #     plt.plot(time_average, divergence_dict[region]["all"]["syn"], '-', color=colors[ii], label=region)
+    # #     plt.plot(time_average, divergence_dict[region]["all"]["non_syn"], '--', color=colors[ii])
+    # #     plt.plot(time_average, divergence_dict[region]["all"]["all"], ':', color=colors[ii])
+    # # plt.plot([0], [0], 'k-', label="Synonymous")
+    # # plt.plot([0], [0], 'k--', label="Non-synonymous")
+    # # plt.plot([0], [0], 'k:', label="All")
     # plt.grid()
+    # plt.xlabel("Time since infection [days]", fontsize=fontsize)
+    # plt.ylabel("Divergence", fontsize=fontsize)
+    # plt.legend(fontsize=fontsize)
     # plt.show()
