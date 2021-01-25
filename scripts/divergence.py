@@ -202,8 +202,7 @@ if __name__ == "__main__":
     regions = ["env", "pol", "gag"]
 
     time = np.arange(0, 3100, 100)
-    divergence_dict = make_divergence_dict(time)
-    save_divergence_dict(divergence_dict)
+    divergence_dict = load_divergence_dict()
 
 
     # plt.figure()
