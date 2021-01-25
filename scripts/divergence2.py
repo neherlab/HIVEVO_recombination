@@ -160,13 +160,3 @@ if __name__ == "__main__":
     plt.ylabel("Divergence")
     plt.grid()
     plt.show()
-
-    # patient = Patient.load("p1")
-    # aft = patient.get_allele_frequency_trajectories(region)
-    # mask = get_non_consensus_mask(patient, region, aft, ref=HIVreference(subtype="any"))
-    #
-    # div_3D = divergence_matrix(aft)
-    # initial_idx = patient.get_initial_indices(region)
-    # div = div_3D[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
-    # div = div[:, 0, :]
-    # div = div[:, mask]
