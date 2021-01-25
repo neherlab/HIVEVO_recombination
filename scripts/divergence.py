@@ -191,9 +191,9 @@ def WH_evo_rate(divergence_dict, time, regions=["env", "pol", "gag"]):
     """
     evo_rate_dict = copy.deepcopy(divergence_dict)
     for key in evo_rate_dict.keys():
-        for key2 in evo_rate_dict[key]["all"].keys():
-            evo_rate_dict[key]["all"][key2] = np.gradient(evo_rate_dict[key]["all"][key2], time)
-        evo_rate_dict[key] = evo_rate_dict[key]["all"]
+        for key2 in evo_rate_dict[key].keys():
+            for key3 in evo_rate_dict[key][key2].keys():
+                evo_rate_dict[key][key2][key3] = np.gradient(evo_rate_dict[key][key2][key3], time)
     return evo_rate_dict
 
 
