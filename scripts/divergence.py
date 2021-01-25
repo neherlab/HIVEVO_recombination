@@ -51,24 +51,41 @@ def get_non_consensus_mask(patient, region, aft, ref=HIVreference(subtype="any")
     return np.logical_and(ref_filter, ~consensus_mask)
 
 
-def get_fitness_mask(patient, region, aft, median, range="low"):
+def get_fitness_mask(patient, region, aft, consensus, range):
     """
     Returns a 1D boolean vector of size aft.shape[-1] where True are the positions corresponding to the 50%
-    lowest/highest fitness values. Sites where the fitness values are NANs are always False.
+    lowest/highest fitness values (over only consensus / non consensus values).
+    Sites where the fitness values are NANs are always False.
     """
 
     assert range in ["low", "high"], "range must be eihter low or high"
+    assert consensus in [True, False], "consensus must be True or False"
 
     fitness_cost = trajectory.get_fitness_cost(patient, region, aft)
     fitness_mask = np.ones_like(fitness_cost, dtype=bool)
     fitness_mask[np.isnan(fitness_cost)] = False  # This is to avoid comparison with NANs
+    fitness = trajectory.get_fitness_cost(patient, region, aft)
 
-    if range == "low":
-        fitness_mask[fitness_mask] = fitness_cost[fitness_mask] < median
+
+    if consensus:
+        consensus_mask = get_consensus_mask(patient, region, aft)
+        tmp = fitness[consensus_mask]
+        fitness_median = np.median([tmp[~np.isnan(tmp)]])
+        if range=="low":
+            fitness_mask[~np.isnan(fitness_cost)] = fitness[~np.isnan(fitness_cost)] < fitness_median
+        else:
+            fitness_mask[~np.isnan(fitness_cost)] = fitness[~np.isnan(fitness_cost)] >= fitness_median
+
     else:
-        fitness_mask[fitness_mask] = fitness_cost[fitness_mask] >= median
+        consensus_mask = get_non_consensus_mask(patient, region, aft)
+        tmp = fitness[consensus_mask]
+        fitness_median = np.median([tmp[~np.isnan(tmp)]])
+        if range=="low":
+            fitness_mask[~np.isnan(fitness_cost)] = fitness[~np.isnan(fitness_cost)] < fitness_median
+        else:
+            fitness_mask[~np.isnan(fitness_cost)] = fitness[~np.isnan(fitness_cost)] >= fitness_median
 
-    return fitness_mask
+    return np.logical_and(fitness_mask, consensus_mask)
 
 
 def get_mean_divergence_patient(patient, region):
@@ -79,8 +96,6 @@ def get_mean_divergence_patient(patient, region):
     # Needed data
     aft = patient.get_allele_frequency_trajectories(region)
     div_3D = divergence_matrix(aft)
-    fitness = trajectory.get_fitness_cost(patient, region, aft)
-    fitness_median = np.median(fitness[~np.isnan(fitness)])
     initial_idx = patient.get_initial_indices(region)
     div = div_3D[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
     div = div[:, 0, :]
@@ -88,16 +103,18 @@ def get_mean_divergence_patient(patient, region):
     # Masks
     consensus_mask = get_consensus_mask(patient, region, aft)
     non_consensus_mask = get_non_consensus_mask(patient, region, aft)
-    fitness_low_mask = get_fitness_mask(patient, region, aft, fitness_median, "low")
-    fitness_high_mask = get_fitness_mask(patient, region, aft, fitness_median, "high")
+    fitness_low_consensus_mask = get_fitness_mask(patient, region, aft, True, "low")
+    fitness_high_consensus_mask = get_fitness_mask(patient, region, aft, True, "high")
+    fitness_low_non_consensus_mask = get_fitness_mask(patient, region, aft, False, "low")
+    fitness_high_non_consensus_mask = get_fitness_mask(patient, region, aft, False, "high")
 
     # Mean divergence in time using mask combination
     consensus_div = np.mean(div[:, consensus_mask], axis=-1)
     non_consensus_div = np.mean(div[:, non_consensus_mask], axis=-1)
-    consensus_low_div = np.mean(div[:, np.logical_and(consensus_mask, fitness_low_mask)], axis=-1)
-    consensus_high_div = np.mean(div[:, np.logical_and(consensus_mask, fitness_high_mask)], axis=-1)
-    non_consensus_low_div = np.mean(div[:, np.logical_and(non_consensus_mask, fitness_low_mask)], axis=-1)
-    non_consensus_high_div = np.mean(div[:, np.logical_and(non_consensus_mask, fitness_high_mask)], axis=-1)
+    consensus_low_div = np.mean(div[:, fitness_low_consensus_mask], axis=-1)
+    consensus_high_div = np.mean(div[:, fitness_high_consensus_mask], axis=-1)
+    non_consensus_low_div = np.mean(div[:, fitness_low_non_consensus_mask], axis=-1)
+    non_consensus_high_div = np.mean(div[:, fitness_high_non_consensus_mask], axis=-1)
 
     div_dict = {"consensus": {}, "non_consensus": {}}
     div_dict["consensus"] = {"low": consensus_low_div, "high": consensus_high_div, "all": consensus_div}
@@ -186,13 +203,42 @@ if __name__ == "__main__":
 
     time = np.arange(0, 3100, 100)
     divergence_dict = make_divergence_dict(time)
+    region = "gag"
+
 
     plt.figure()
-    for region in regions:
-        for key1 in divergence_dict[region].keys():
-            plt.plot(time, divergence_dict[region][key1]["all"], label=f"{region} {key1}")
+    for key1 in divergence_dict[region].keys():
+        for key2 in divergence_dict[region][key1].keys():
+            plt.plot(time, divergence_dict[region][key1][key2], label=f"{key1} {key2}")
     plt.legend()
     plt.xlabel("Time")
     plt.ylabel("Divergence")
     plt.grid()
     plt.show()
+
+    # patient = Patient.load("p1")
+    # region = "env"
+    # aft = patient.get_allele_frequency_trajectories(region)
+    # fitness = trajectory.get_fitness_cost(patient, region, aft)
+    #
+    # plt.figure()
+    # mask = get_fitness_mask(patient, region, aft, True, "low")
+    # tmp = fitness[mask]
+    # hist, bins = np.histogram(tmp, bins=5000)
+    # bins = 0.5* (bins[1:] + bins[:-1])
+    # hist = hist / np.sum(hist)
+    # cumulative = np.cumsum(hist)
+    # plt.plot(bins, 0.5*cumulative)
+    #
+    # mask = get_fitness_mask(patient, region, aft, True, "high")
+    # tmp = fitness[mask]
+    # hist, bins = np.histogram(tmp, bins=5000)
+    # bins = 0.5* (bins[1:] + bins[:-1])
+    # hist = hist / np.sum(hist)
+    # cumulative = np.cumsum(hist)
+    # plt.plot(bins, 0.5 + 0.5*cumulative)
+    #
+    # plt.xscale("log")
+    # plt.xlim([5e-5, 2])
+    # plt.grid()
+    # plt.show()
