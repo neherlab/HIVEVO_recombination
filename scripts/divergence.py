@@ -203,42 +203,15 @@ if __name__ == "__main__":
 
     time = np.arange(0, 3100, 100)
     divergence_dict = make_divergence_dict(time)
-    region = "gag"
+    save_divergence_dict(divergence_dict)
 
 
-    plt.figure()
-    for key1 in divergence_dict[region].keys():
-        for key2 in divergence_dict[region][key1].keys():
-            plt.plot(time, divergence_dict[region][key1][key2], label=f"{key1} {key2}")
-    plt.legend()
-    plt.xlabel("Time")
-    plt.ylabel("Divergence")
-    plt.grid()
-    plt.show()
-
-    # patient = Patient.load("p1")
-    # region = "env"
-    # aft = patient.get_allele_frequency_trajectories(region)
-    # fitness = trajectory.get_fitness_cost(patient, region, aft)
-    #
     # plt.figure()
-    # mask = get_fitness_mask(patient, region, aft, True, "low")
-    # tmp = fitness[mask]
-    # hist, bins = np.histogram(tmp, bins=5000)
-    # bins = 0.5* (bins[1:] + bins[:-1])
-    # hist = hist / np.sum(hist)
-    # cumulative = np.cumsum(hist)
-    # plt.plot(bins, 0.5*cumulative)
-    #
-    # mask = get_fitness_mask(patient, region, aft, True, "high")
-    # tmp = fitness[mask]
-    # hist, bins = np.histogram(tmp, bins=5000)
-    # bins = 0.5* (bins[1:] + bins[:-1])
-    # hist = hist / np.sum(hist)
-    # cumulative = np.cumsum(hist)
-    # plt.plot(bins, 0.5 + 0.5*cumulative)
-    #
-    # plt.xscale("log")
-    # plt.xlim([5e-5, 2])
+    # for key1 in divergence_dict[region].keys():
+    #     for key2 in divergence_dict[region][key1].keys():
+    #         plt.plot(time, divergence_dict[region][key1][key2], label=f"{key1} {key2}")
+    # plt.legend()
+    # plt.xlabel("Time")
+    # plt.ylabel("Divergence")
     # plt.grid()
     # plt.show()
