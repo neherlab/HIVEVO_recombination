@@ -92,14 +92,16 @@ def get_mean_divergence_patient(patient, region):
     fitness_high_mask = get_fitness_mask(patient, region, aft, fitness_median, "high")
 
     # Mean divergence in time using mask combination
+    consensus_div = np.mean(div[:, consensus_mask], axis=-1)
+    non_consensus_div = np.mean(div[:, non_consensus_mask], axis=-1)
     consensus_low_div = np.mean(div[:, np.logical_and(consensus_mask, fitness_low_mask)], axis=-1)
     consensus_high_div = np.mean(div[:, np.logical_and(consensus_mask, fitness_high_mask)], axis=-1)
     non_consensus_low_div = np.mean(div[:, np.logical_and(non_consensus_mask, fitness_low_mask)], axis=-1)
     non_consensus_high_div = np.mean(div[:, np.logical_and(non_consensus_mask, fitness_high_mask)], axis=-1)
 
     div_dict = {"consensus": {}, "non_consensus": {}}
-    div_dict["consensus"] = {"low": consensus_low_div, "high": consensus_high_div}
-    div_dict["non_consensus"] = {"low": non_consensus_low_div, "high": non_consensus_high_div}
+    div_dict["consensus"] = {"low": consensus_low_div, "high": consensus_high_div, "all": consensus_div}
+    div_dict["non_consensus"] = {"low": non_consensus_low_div, "high": non_consensus_high_div, "all": non_consensus_div}
 
     return div_dict
 
@@ -111,7 +113,7 @@ def make_divergence_dict(time, ref=HIVreference(subtype="any")):
 
     regions = ["env", "pol", "gag"]
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    fitness_keys = ["low", "high"]
+    fitness_keys = ["low", "high", "all"]
 
     divergence_dict = {}
     for region in regions:
@@ -127,18 +129,14 @@ def make_divergence_dict(time, ref=HIVreference(subtype="any")):
             patient_div_dict = get_mean_divergence_patient(patient, region)
 
             tmp_time = time[time < patient.dsi[-1]]
+            nb_traj[:len(tmp_time)] += 1
 
             for key in fitness_keys:
-                nb_traj[:len(tmp_time)] += 1
-                patient_div_dict["consensus"][key] = np.interp(
-                    tmp_time, patient.dsi, patient_div_dict["consensus"][key])
-                patient_div_dict["non_consensus"][key] = np.interp(
-                    tmp_time, patient.dsi, patient_div_dict["non_consensus"][key])
+                patient_div_dict["consensus"][key] = np.interp(tmp_time, patient.dsi, patient_div_dict["consensus"][key])
+                patient_div_dict["non_consensus"][key] = np.interp(tmp_time, patient.dsi, patient_div_dict["non_consensus"][key])
 
-                divergence_dict[region]["consensus"][key][:len(
-                    tmp_time)] += patient_div_dict["consensus"][key]
-                divergence_dict[region]["non_consensus"][key][:len(
-                    tmp_time)] += patient_div_dict["non_consensus"][key]
+                divergence_dict[region]["consensus"][key][:len(tmp_time)] += patient_div_dict["consensus"][key]
+                divergence_dict[region]["non_consensus"][key][:len(tmp_time)] += patient_div_dict["non_consensus"][key]
 
         for key1 in ["consensus", "non_consensus"]:
             for key2 in fitness_keys:
@@ -156,13 +154,19 @@ if __name__ == "__main__":
 
     plt.figure()
     for key1 in divergence_dict[region].keys():
-        for key2 in divergence_dict[region][key1].keys():
-            plt.plot(time, divergence_dict[region][key1][key2], label=f"{key1} {key2}")
+        plt.plot(time, divergence_dict[region][key1]["all"], label=f"{key1} all")
     plt.legend()
     plt.xlabel("Time")
     plt.ylabel("Divergence")
     plt.grid()
     plt.show()
 
-    # patient = patient.load("p1")
-    # div_dict = patient_div_dict(patient, "env")
+    # patient = Patient.load("p1")
+    # aft = patient.get_allele_frequency_trajectories(region)
+    # mask = get_non_consensus_mask(patient, region, aft, ref=HIVreference(subtype="any"))
+    #
+    # div_3D = divergence_matrix(aft)
+    # initial_idx = patient.get_initial_indices(region)
+    # div = div_3D[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
+    # div = div[:, 0, :]
+    # div = div[:, mask]
