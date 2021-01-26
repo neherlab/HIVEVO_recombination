@@ -118,9 +118,9 @@ def distance_to_pairs(sequences):
 
 if __name__ == '__main__':
     evo_rates = {
-        "env": {"rev": 4.359e-5, "non_rev": 6.734e-6},
-        "pol": {"rev": 2.500e-5, "non_rev": 2.946e-6},
-        "gag": {"rev": 3.562e-5, "non_rev": 3.739e-6}
+        "env": {"consensus": {"low": 1.0426e-5, "high": 3.1066e-6}, "non_consensus": {"low": 4.8899e-5, "high": 3.6908e-5}},
+        "pol": {"consensus": {"low": 5.7398e-6, "high": 1.5924e-7}, "non_consensus": {"low": 2.2535e-5, "high": 2.7416e-5}},
+        "gag": {"consensus": {"low": 6.4968e-6, "high": 9.5654e-7}, "non_consensus": {"low": 3.8259e-5, "high": 3.1537e-5}}
     }
 
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
