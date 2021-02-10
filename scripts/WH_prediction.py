@@ -118,25 +118,21 @@ def distance_to_pairs(sequences):
 
 if __name__ == '__main__':
     evo_rates = {
-        "env": {"consensus": {"low": 1.0426e-5, "high": 3.1066e-6}, "non_consensus": {"low": 4.8899e-5, "high": 3.6908e-5}},
-        "pol": {"consensus": {"low": 5.7398e-6, "high": 1.5924e-7}, "non_consensus": {"low": 2.2535e-5, "high": 2.7416e-5}},
-        "gag": {"consensus": {"low": 6.4968e-6, "high": 9.5654e-7}, "non_consensus": {"low": 3.8259e-5, "high": 3.1537e-5}}
+        "pol": {"consensus": {"first": 1.98e-6, "second": 1.18e-6, "third": 5.96e-6},
+                "non_consensus": {"first": 2.88e-5, "second": 4.549e-5, "third": 2.06e-5}
+                }
     }
 
     # These are per nucleotide per year, need to change it for per day to match the simulation
     BH_rates = {"all": 0.0009372268087945193, "first": 0.0006754649449205438,
                 "second": 0.000407792658976286, "third": 0.0017656284793794623}
 
-    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    regions = ["env", "pol", "gag"]
     nb_simulation = 10
-    simulation_time = 365000  # in days
+    simulation_time = 36500  # in days
     dt = 10
     time = np.arange(0, simulation_time + 1, dt)
     sampling_time = 10 * dt
     sequence_length = 2500
-    rate_rev = evo_rates["gag"]["rev"]
-    rate_non_rev = evo_rates["gag"]["non_rev"]
 
     # True is consensus, False is non consensus
     x_0 = np.ones(sequence_length, dtype=bool)
