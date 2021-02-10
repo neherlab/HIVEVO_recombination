@@ -87,6 +87,26 @@ def get_fitness_mask(patient, region, aft, consensus, range):
     return np.logical_and(fitness_mask, consensus_mask)
 
 
+def get_position_mask(patient, region, aft, consensus, position):
+    """
+    Returns a 1D boolean vector of size aft.shape[-1] where True are the positions corresponding to 1st, 2nd
+    or 3rd positions and consensus (or not).
+    """
+
+    assert position in [1, 2, 3], "Position must be 1 2 or 3."
+    assert consensus in [True, False], "consensus must be True or False"
+
+    position_mask = np.zeros(aft.shape[-1], dtype=bool)
+    position_mask[position - 1::3] = True
+
+    if consensus:
+        consensus_mask = get_consensus_mask(patient, region, aft)
+    else:
+        consensus_mask = get_non_consensus_mask(patient, region, aft)
+
+    return np.logical_and(position_mask, consensus_mask)
+
+
 def get_mean_divergence_patient(patient, region):
     """
     Returns a dictionary with the divergence over time for different categories.
@@ -106,28 +126,32 @@ def get_mean_divergence_patient(patient, region):
     fitness_high_consensus_mask = get_fitness_mask(patient, region, aft, True, "high")
     fitness_low_non_consensus_mask = get_fitness_mask(patient, region, aft, False, "low")
     fitness_high_non_consensus_mask = get_fitness_mask(patient, region, aft, False, "high")
+    first_consensus_mask = get_position_mask(patient, region, aft, True, 1)
+    first_non_consensus_mask = get_position_mask(patient, region, aft, False, 1)
+    second_consensus_mask = get_position_mask(patient, region, aft, True, 2)
+    second_non_consensus_mask = get_position_mask(patient, region, aft, False, 2)
+    third_consensus_mask = get_position_mask(patient, region, aft, True, 3)
+    third_non_consensus_mask = get_position_mask(patient, region, aft, False, 3)
 
     # Mean divergence in time using mask combination
-    consensus_div_2D = div[:, consensus_mask]
-    non_consensus_div_2D = div[:, non_consensus_mask]
-    consensus_div = np.mean(consensus_div_2D, axis=-1)
-    non_consensus_div = np.mean(non_consensus_div_2D, axis=-1)
+    consensus_div = np.mean(div[:, consensus_mask], axis=-1)
+    non_consensus_div = np.mean(div[:, non_consensus_mask], axis=-1)
     consensus_low_div = np.mean(div[:, fitness_low_consensus_mask], axis=-1)
     consensus_high_div = np.mean(div[:, fitness_high_consensus_mask], axis=-1)
     non_consensus_low_div = np.mean(div[:, fitness_low_non_consensus_mask], axis=-1)
     non_consensus_high_div = np.mean(div[:, fitness_high_non_consensus_mask], axis=-1)
-    consensus_div_1st = np.mean(consensus_div_2D[:, ::3], axis=-1)
-    non_consensus_div_1st = np.mean(non_consensus_div_2D[:, ::3], axis=-1)
-    consensus_div_2nd = np.mean(consensus_div_2D[:, 1::3], axis=-1)
-    non_consensus_div_2nd = np.mean(non_consensus_div_2D[:, 1::3], axis=-1)
-    consensus_div_3rd = np.mean(consensus_div_2D[:, 2::3], axis=-1)
-    non_consensus_div_3rd = np.mean(non_consensus_div_2D[:, 2::3], axis=-1)
+    consensus_first_div = np.mean(div[:, first_consensus_mask], axis=-1)
+    non_consensus_first_div = np.mean(div[:, first_non_consensus_mask], axis=-1)
+    consensus_second_div = np.mean(div[:, second_consensus_mask], axis=-1)
+    non_consensus_second_div = np.mean(div[:, second_non_consensus_mask], axis=-1)
+    consensus_third_div = np.mean(div[:, third_consensus_mask], axis=-1)
+    non_consensus_third_div = np.mean(div[:, third_non_consensus_mask], axis=-1)
 
     div_dict = {"consensus": {}, "non_consensus": {}}
     div_dict["consensus"] = {"low": consensus_low_div, "high": consensus_high_div, "all": consensus_div,
-                             "first": consensus_div_1st,  "second": consensus_div_2nd, "third": consensus_div_3rd}
+                             "first": consensus_first_div,  "second": consensus_second_div, "third": consensus_third_div}
     div_dict["non_consensus"] = {"low": non_consensus_low_div, "high": non_consensus_high_div, "all": non_consensus_div,
-                                 "first": non_consensus_div_1st,  "second": non_consensus_div_2nd, "third": non_consensus_div_3rd}
+                                 "first": non_consensus_first_div,  "second": non_consensus_second_div, "third": non_consensus_third_div}
 
     return div_dict
 
@@ -209,12 +233,12 @@ if __name__ == "__main__":
     colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
     regions = ["env", "pol", "gag"]
 
-    # time = np.arange(0, 3100, 100)
-    # divergence_dict = make_divergence_dict(time)
-    # save_divergence_dict(divergence_dict)
+    time = np.arange(0, 3100, 100)
+    divergence_dict = make_divergence_dict(time)
+    save_divergence_dict(divergence_dict)
 
-    patient = Patient.load("p1")
-    div_dict = get_mean_divergence_patient(patient, "pol")
+    # patient = Patient.load("p1")
+    # div_dict = get_mean_divergence_patient(patient, "pol")
 
     # plt.figure()
     # for key1 in divergence_dict[region].keys():
