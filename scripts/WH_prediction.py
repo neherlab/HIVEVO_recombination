@@ -123,6 +123,10 @@ if __name__ == '__main__':
         "gag": {"consensus": {"low": 6.4968e-6, "high": 9.5654e-7}, "non_consensus": {"low": 3.8259e-5, "high": 3.1537e-5}}
     }
 
+    # These are per nucleotide per year, need to change it for per day to match the simulation
+    BH_rates = {"all": 0.0009372268087945193, "first": 0.0006754649449205438,
+                "second": 0.000407792658976286, "third": 0.0017656284793794623}
+
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
     regions = ["env", "pol", "gag"]
     nb_simulation = 10

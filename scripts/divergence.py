@@ -66,12 +66,11 @@ def get_fitness_mask(patient, region, aft, consensus, range):
     fitness_mask[np.isnan(fitness_cost)] = False  # This is to avoid comparison with NANs
     fitness = trajectory.get_fitness_cost(patient, region, aft)
 
-
     if consensus:
         consensus_mask = get_consensus_mask(patient, region, aft)
         tmp = fitness[consensus_mask]
         fitness_median = np.median([tmp[~np.isnan(tmp)]])
-        if range=="low":
+        if range == "low":
             fitness_mask[~np.isnan(fitness_cost)] = fitness[~np.isnan(fitness_cost)] < fitness_median
         else:
             fitness_mask[~np.isnan(fitness_cost)] = fitness[~np.isnan(fitness_cost)] >= fitness_median
@@ -80,7 +79,7 @@ def get_fitness_mask(patient, region, aft, consensus, range):
         consensus_mask = get_non_consensus_mask(patient, region, aft)
         tmp = fitness[consensus_mask]
         fitness_median = np.median([tmp[~np.isnan(tmp)]])
-        if range=="low":
+        if range == "low":
             fitness_mask[~np.isnan(fitness_cost)] = fitness[~np.isnan(fitness_cost)] < fitness_median
         else:
             fitness_mask[~np.isnan(fitness_cost)] = fitness[~np.isnan(fitness_cost)] >= fitness_median
@@ -109,30 +108,39 @@ def get_mean_divergence_patient(patient, region):
     fitness_high_non_consensus_mask = get_fitness_mask(patient, region, aft, False, "high")
 
     # Mean divergence in time using mask combination
-    consensus_div = np.mean(div[:, consensus_mask], axis=-1)
-    non_consensus_div = np.mean(div[:, non_consensus_mask], axis=-1)
+    consensus_div_2D = div[:, consensus_mask]
+    non_consensus_div_2D = div[:, non_consensus_mask]
+    consensus_div = np.mean(consensus_div_2D, axis=-1)
+    non_consensus_div = np.mean(non_consensus_div_2D, axis=-1)
     consensus_low_div = np.mean(div[:, fitness_low_consensus_mask], axis=-1)
     consensus_high_div = np.mean(div[:, fitness_high_consensus_mask], axis=-1)
     non_consensus_low_div = np.mean(div[:, fitness_low_non_consensus_mask], axis=-1)
     non_consensus_high_div = np.mean(div[:, fitness_high_non_consensus_mask], axis=-1)
+    consensus_div_1st = np.mean(consensus_div_2D[:, ::3], axis=-1)
+    non_consensus_div_1st = np.mean(non_consensus_div_2D[:, ::3], axis=-1)
+    consensus_div_2nd = np.mean(consensus_div_2D[:, 1::3], axis=-1)
+    non_consensus_div_2nd = np.mean(non_consensus_div_2D[:, 1::3], axis=-1)
+    consensus_div_3rd = np.mean(consensus_div_2D[:, 2::3], axis=-1)
+    non_consensus_div_3rd = np.mean(non_consensus_div_2D[:, 2::3], axis=-1)
 
     div_dict = {"consensus": {}, "non_consensus": {}}
-    div_dict["consensus"] = {"low": consensus_low_div, "high": consensus_high_div, "all": consensus_div}
-    div_dict["non_consensus"] = {"low": non_consensus_low_div,
-                                 "high": non_consensus_high_div, "all": non_consensus_div}
+    div_dict["consensus"] = {"low": consensus_low_div, "high": consensus_high_div, "all": consensus_div,
+                             "first": consensus_div_1st,  "second": consensus_div_2nd, "third": consensus_div_3rd}
+    div_dict["non_consensus"] = {"low": non_consensus_low_div, "high": non_consensus_high_div, "all": non_consensus_div,
+                                 "first": non_consensus_div_1st,  "second": non_consensus_div_2nd, "third": non_consensus_div_3rd}
 
     return div_dict
 
 
-def make_divergence_dict(time, ref=HIVreference(subtype="any")):
+def make_divergence_dict(time):
     """
     Creates a dictionary with the divergence in time averaged over patients.
-    Format of the dictionary : dict[region][consensus/non_consensus][high/low/all]
+    Format of the dictionary : dict[region][consensus/non_consensus][high/low/all/first/second/third]
     """
 
     regions = ["env", "pol", "gag"]
     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    fitness_keys = ["low", "high", "all"]
+    fitness_keys = ["low", "high", "all", "first", "second", "third"]
 
     divergence_dict = {}
     for region in regions:
@@ -201,9 +209,12 @@ if __name__ == "__main__":
     colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
     regions = ["env", "pol", "gag"]
 
-    time = np.arange(0, 3100, 100)
-    divergence_dict = load_divergence_dict()
+    # time = np.arange(0, 3100, 100)
+    # divergence_dict = make_divergence_dict(time)
+    # save_divergence_dict(divergence_dict)
 
+    patient = Patient.load("p1")
+    div_dict = get_mean_divergence_patient(patient, "pol")
 
     # plt.figure()
     # for key1 in divergence_dict[region].keys():
