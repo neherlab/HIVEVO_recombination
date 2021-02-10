@@ -123,38 +123,50 @@ if __name__ == '__main__':
                 }
     }
 
+    # These are the equilibrium frequency of consensus sites extracted from intra host data
+    equilibrium_frequency = {
+        "pol": {"first": 0.952, "second": 0.975, "third": 0.860}
+    }
+
     # These are per nucleotide per year, need to change it for per day to match the simulation
     BH_rates = {"all": 0.0009372268087945193, "first": 0.0006754649449205438,
                 "second": 0.000407792658976286, "third": 0.0017656284793794623}
 
-    nb_simulation = 10
-    simulation_time = 36500  # in days
-    dt = 10
-    time = np.arange(0, simulation_time + 1, dt)
-    sampling_time = 10 * dt
-    sequence_length = 2500
+    for key in ["first", "second", "third"]:
+        mu = evo_rates["pol"]["non_consensus"][key]
+        mu2 = evo_rates["pol"]["consensus"][key]
 
-    # True is consensus, False is non consensus
-    x_0 = np.ones(sequence_length, dtype=bool)
-    sequences = run_simulation_group(x_0, simulation_time, dt, rate_rev,
-                                     rate_non_rev, sampling_time, nb_simulation)
-    distance_initial = distance_to_initial(sequences)
-    mean_distance_initial = np.mean(distance_initial, axis=-1)
-    distance_pairs = distance_to_pairs(sequences)
-    mean_distance_pairs = np.mean(distance_pairs, axis=-1)
+        equilibrium = mu / (mu + mu2)
+        print(equilibrium)
 
-    x = time[::10]
-    saturation = 2 * rate_rev * rate_non_rev * len(x_0) / (rate_rev + rate_non_rev)**2
-    tau = 1 / (rate_rev + rate_non_rev)
-    theory = saturation * (1 - np.exp(-time / tau))
-
-    plt.figure()
-    plt.plot(x, mean_distance_initial, label="Mean distance to initial")
-    plt.plot(time, theory, "k--", label="x")
-    plt.xlabel("Time [years]")
-    plt.ylabel("Hamming distance")
-    plt.legend()
-    # plt.xscale("log")
-    # plt.yscale("log")
-    plt.grid()
-    plt.show()
+    # nb_simulation = 10
+    # simulation_time = 36500  # in days
+    # dt = 10
+    # time = np.arange(0, simulation_time + 1, dt)
+    # sampling_time = 10 * dt
+    # sequence_length = 2500
+    #
+    # # True is consensus, False is non consensus
+    # x_0 = np.ones(sequence_length, dtype=bool)
+    # sequences = run_simulation_group(x_0, simulation_time, dt, rate_rev,
+    #                                  rate_non_rev, sampling_time, nb_simulation)
+    # distance_initial = distance_to_initial(sequences)
+    # mean_distance_initial = np.mean(distance_initial, axis=-1)
+    # distance_pairs = distance_to_pairs(sequences)
+    # mean_distance_pairs = np.mean(distance_pairs, axis=-1)
+    #
+    # x = time[::10]
+    # saturation = 2 * rate_rev * rate_non_rev * len(x_0) / (rate_rev + rate_non_rev)**2
+    # tau = 1 / (rate_rev + rate_non_rev)
+    # theory = saturation * (1 - np.exp(-time / tau))
+    #
+    # plt.figure()
+    # plt.plot(x, mean_distance_initial, label="Mean distance to initial")
+    # plt.plot(time, theory, "k--", label="x")
+    # plt.xlabel("Time [years]")
+    # plt.ylabel("Hamming distance")
+    # plt.legend()
+    # # plt.xscale("log")
+    # # plt.yscale("log")
+    # plt.grid()
+    # plt.show()

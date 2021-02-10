@@ -233,12 +233,25 @@ if __name__ == "__main__":
     colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
     regions = ["env", "pol", "gag"]
 
-    time = np.arange(0, 3100, 100)
-    divergence_dict = make_divergence_dict(time)
-    save_divergence_dict(divergence_dict)
+    # time = np.arange(0, 3100, 100)
+    # divergence_dict = make_divergence_dict(time)
+    # save_divergence_dict(divergence_dict)
 
-    # patient = Patient.load("p1")
-    # div_dict = get_mean_divergence_patient(patient, "pol")
+    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
+    region = "pol"
+    nb_consensus = np.array([0,0,0])
+    for patient_name in patient_names:
+        patient = Patient.load("p1")
+        aft = patient.get_allele_frequency_trajectories(region)
+        mask = get_consensus_mask(patient, region, aft)
+        mask1 = mask[::3]
+        mask2 = mask[1::3]
+        mask3 = mask[2::3]
+        nb_consensus += [np.sum(mask1), np.sum(mask2), np.sum(mask3)]
+
+    nb_consensus = nb_consensus / len(patient_names) / (aft.shape[-1]/3)
+
+    print(nb_consensus)
 
     # plt.figure()
     # for key1 in divergence_dict[region].keys():
