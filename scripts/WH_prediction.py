@@ -35,6 +35,7 @@ def simulation_third(x, dt, rate_consensus, rate_non_consensus):
     x[idxs_mutation] = ~x[idxs_mutation]
     return x
 
+
 def simulation_step(x, dt, rates):
     """
     Returns the boolean vector x(t+dt) from x(t). Time unit is day, rates are per day and per nucleotide.
@@ -42,9 +43,12 @@ def simulation_step(x, dt, rates):
     rates["consensus"] and rates["non_consensus"] are dict containing the rates for the keys ["first", "second", "third"]
     """
     nb_site = x.shape[0] // 3
-    x[:nb_site] = simulation_third(x[:nb_site], dt, rates["consensus"]["first"], rates["non_consensus"]["first"])
-    x[nb_site:2*nb_site] = simulation_third(x[nb_site:2*nb_site], dt, rates["consensus"]["second"], rates["non_consensus"]["second"])
-    x[2*nb_site:] = simulation_third(x[2*nb_site:], dt, rates["consensus"]["third"], rates["non_consensus"]["third"])
+    x[:nb_site] = simulation_third(x[:nb_site], dt, rates["consensus"]
+                                   ["first"], rates["non_consensus"]["first"])
+    x[nb_site:2 * nb_site] = simulation_third(x[nb_site:2 * nb_site],
+                                              dt, rates["consensus"]["second"], rates["non_consensus"]["second"])
+    x[2 * nb_site:] = simulation_third(x[2 * nb_site:], dt, rates["consensus"]
+                                       ["third"], rates["non_consensus"]["third"])
 
     return x
 
@@ -65,7 +69,7 @@ def initialize_fixed_point(sequence_length, frequencies):
     return x
 
 
-def run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time):
+def run_simulation(x, simulation_time, dt, rates, sampling_time):
     """
     Runs a simulation and stores the sampled sequences the matrix sequences (nb_nucleotide * nb_sequences).
     x is modified during the simulation. The original sequence is included in the sequences matrix, in the first row.
@@ -80,7 +84,7 @@ def run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time
             sequences[:, ii] = x
             ii += 1
 
-        x = simulation_step(x, dt, rate_rev, rate_non_rev)
+        x = simulation_step(x, dt, rates)
     return sequences
 
 
@@ -159,9 +163,7 @@ if __name__ == '__main__':
     # First position are the first third of sites, second position are 2nd third, 3rd are last third
     x_0 = initialize_fixed_point(sequence_length, equilibrium_frequency["pol"])
     x = np.copy(x_0)
-    for ii in range(10000):
-        x = simulation_step(x, dt, evo_rates["pol"])
-
+    sequences = run_simulation(x, simulation_time, dt, evo_rates["pol"], sampling_time)
     # plt.figure()
     # plt.plot(x, mean_distance_initial, label="Mean distance to initial")
     # plt.plot(time, theory, "k--", label="x")
