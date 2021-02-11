@@ -33,19 +33,20 @@ def simulation_step(x, dt, rate_rev, rate_non_rev):
     return x
 
 
-def initialize_seq(sequence_length, freq_non_consensus):
-    "Returns a boolean vector specified length where values are False with the specified frequency (chosen at random)"
-    x_0 = np.ones(sequence_length, dtype=bool)
-    nb_non_consensus = round(sequence_length * freq_non_consensus)
-    idxs = np.random.choice(sequence_length, nb_non_consensus)
-    x_0[idxs] = False
-    return x_0
+def initialize_fixed_point(sequence_length, frequencies):
+    """
+    Return initialize_seq with frequence according to the fixed point for 1st, 2nd and 3rd nucleotides.
+    Frequencies is a dictionary containing the frequency of consensus sites for the keys ["first", "second", "third"].
+    """
+    x = np.ones(sequence_length, dtype=bool)
+    nb_site = x.shape[0] // 3
 
-
-def initialize_fixed_point(sequence_length, rate_rev, rate_non_rev):
-    "Return initialize_seq with frequence accroding to the fixed point."
-    freq_non_consensus = rate_non_rev / (rate_rev + rate_non_rev)
-    return initialize_seq(sequence_length, freq_non_consensus)
+    for ii, key in enumerate(["first", "second", "third"]):
+        nb_non_consensus = round(nb_site * (1 - frequencies[key]))
+        idxs = np.random.choice(nb_site, nb_non_consensus)
+        idxs += ii * nb_site
+        x[idxs] = False
+    return x
 
 
 def run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time):
@@ -119,46 +120,28 @@ def distance_to_pairs(sequences):
 if __name__ == '__main__':
     evo_rates = {
         "pol": {"consensus": {"first": 1.98e-6, "second": 1.18e-6, "third": 5.96e-6},
-                "non_consensus": {"first": 2.88e-5, "second": 4.549e-5, "third": 2.06e-5}
-                }
+                "non_consensus": {"first": 2.88e-5, "second": 4.549e-5, "third": 2.06e-5}}
     }
 
     # These are the equilibrium frequency of consensus sites extracted from intra host data
-    equilibrium_frequency = {
-        "pol": {"first": 0.952, "second": 0.975, "third": 0.860}
-    }
+    equilibrium_frequency = {"pol": {"first": 0.952, "second": 0.975, "third": 0.860}}
 
     # These are per nucleotide per year, need to change it for per day to match the simulation
     BH_rates = {"all": 0.0009372268087945193, "first": 0.0006754649449205438,
                 "second": 0.000407792658976286, "third": 0.0017656284793794623}
+    for key in BH_rates.keys():
+        BH_rates[key] /= 365
 
-    for key in ["first", "second", "third"]:
-        mu = evo_rates["pol"]["non_consensus"][key]
-        mu2 = evo_rates["pol"]["consensus"][key]
+    nb_simulation = 10
+    simulation_time = 36500  # in days
+    dt = 10
+    time = np.arange(0, simulation_time + 1, dt)
+    sampling_time = 10 * dt
+    sequence_length = 3000
 
-        equilibrium = mu / (mu + mu2)
-        print(equilibrium)
-
-    # nb_simulation = 10
-    # simulation_time = 36500  # in days
-    # dt = 10
-    # time = np.arange(0, simulation_time + 1, dt)
-    # sampling_time = 10 * dt
-    # sequence_length = 2500
-    #
-    # # True is consensus, False is non consensus
-    # x_0 = np.ones(sequence_length, dtype=bool)
-    # sequences = run_simulation_group(x_0, simulation_time, dt, rate_rev,
-    #                                  rate_non_rev, sampling_time, nb_simulation)
-    # distance_initial = distance_to_initial(sequences)
-    # mean_distance_initial = np.mean(distance_initial, axis=-1)
-    # distance_pairs = distance_to_pairs(sequences)
-    # mean_distance_pairs = np.mean(distance_pairs, axis=-1)
-    #
-    # x = time[::10]
-    # saturation = 2 * rate_rev * rate_non_rev * len(x_0) / (rate_rev + rate_non_rev)**2
-    # tau = 1 / (rate_rev + rate_non_rev)
-    # theory = saturation * (1 - np.exp(-time / tau))
+    # True is consensus, False is non consensus
+    x_0 = initialize_fixed_point(sequence_length, equilibrium_frequency["pol"])
+    # x = simulation_step(x_0, dt, rate_rev, rate_non_rev)
     #
     # plt.figure()
     # plt.plot(x, mean_distance_initial, label="Mean distance to initial")
