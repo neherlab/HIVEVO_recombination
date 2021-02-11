@@ -15,12 +15,15 @@ sys.path.append("../scripts/")
 
 
 @jit(nopython=True)  # makes it ~10 times faster
-def simulation_step(x, dt, rate_rev, rate_non_rev):
-    "Returns the boolean vector x(t+dt) from x(t). Time unit is day, rates are per day and per nucleotide."
+def simulation_third(x, dt, rate_consensus, rate_non_consensus):
+    """
+    Returns the boolean vector x(t+dt) from x(t). Time unit is day, rates are per day and per nucleotide.
+    Used to simulate one third of the sites (either 1st, 2nd or 3rd position sites).
+    """
     nb_consensus = len(x[x])
     nb_non_consensus = len(x) - nb_consensus
-    nb_rev = np.random.poisson(nb_non_consensus * rate_rev * dt)
-    nb_non_rev = np.random.poisson(nb_consensus * rate_non_rev * dt)
+    nb_rev = np.random.poisson(nb_non_consensus * rate_non_consensus * dt)
+    nb_non_rev = np.random.poisson(nb_consensus * rate_consensus * dt)
 
     idxs_consensus = np.where(x)[0]
     idxs_non_consensus = np.where(~x)[0]
@@ -30,6 +33,19 @@ def simulation_step(x, dt, rate_rev, rate_non_rev):
 
     idxs_mutation = np.concatenate((mut_rev, mut_non_rev))
     x[idxs_mutation] = ~x[idxs_mutation]
+    return x
+
+def simulation_step(x, dt, rates):
+    """
+    Returns the boolean vector x(t+dt) from x(t). Time unit is day, rates are per day and per nucleotide.
+    Rates is a dict containing keys ["consensus", "non_consensus"].
+    rates["consensus"] and rates["non_consensus"] are dict containing the rates for the keys ["first", "second", "third"]
+    """
+    nb_site = x.shape[0] // 3
+    x[:nb_site] = simulation_third(x[:nb_site], dt, rates["consensus"]["first"], rates["non_consensus"]["first"])
+    x[nb_site:2*nb_site] = simulation_third(x[nb_site:2*nb_site], dt, rates["consensus"]["second"], rates["non_consensus"]["second"])
+    x[2*nb_site:] = simulation_third(x[2*nb_site:], dt, rates["consensus"]["third"], rates["non_consensus"]["third"])
+
     return x
 
 
@@ -140,9 +156,12 @@ if __name__ == '__main__':
     sequence_length = 3000
 
     # True is consensus, False is non consensus
+    # First position are the first third of sites, second position are 2nd third, 3rd are last third
     x_0 = initialize_fixed_point(sequence_length, equilibrium_frequency["pol"])
-    # x = simulation_step(x_0, dt, rate_rev, rate_non_rev)
-    #
+    x = np.copy(x_0)
+    for ii in range(10000):
+        x = simulation_step(x, dt, evo_rates["pol"])
+
     # plt.figure()
     # plt.plot(x, mean_distance_initial, label="Mean distance to initial")
     # plt.plot(time, theory, "k--", label="x")
