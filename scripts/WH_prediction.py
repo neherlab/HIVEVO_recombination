@@ -88,7 +88,7 @@ def run_simulation(x, simulation_time, dt, rates, sampling_time):
     return sequences
 
 
-def run_simulation_group(x_0, simulation_time, dt, rate_rev, rate_non_rev, sampling_time, nb_sim):
+def run_simulation_group(x_0, simulation_time, dt, rates, sampling_time, nb_sim):
     """
     Runs several simulation starting from the same x_0, and returns a 3D matrix containing the sequences
     (nb_nucleotide * nb_sequences * nb_simulation)
@@ -98,7 +98,7 @@ def run_simulation_group(x_0, simulation_time, dt, rate_rev, rate_non_rev, sampl
 
     for ii in range(nb_sim):
         x = np.copy(x_0)
-        sim_matrix = run_simulation(x, simulation_time, dt, rate_rev, rate_non_rev, sampling_time)
+        sim_matrix = run_simulation(x, simulation_time, dt, rates, sampling_time)
         sequences[:, :, ii] = sim_matrix
 
     return sequences
@@ -162,8 +162,8 @@ if __name__ == '__main__':
     # True is consensus, False is non consensus
     # First position are the first third of sites, second position are 2nd third, 3rd are last third
     x_0 = initialize_fixed_point(sequence_length, equilibrium_frequency["pol"])
-    x = np.copy(x_0)
-    sequences = run_simulation(x, simulation_time, dt, evo_rates["pol"], sampling_time)
+    sequences = run_simulation_group(x_0, simulation_time, dt, evo_rates["pol"], sampling_time, nb_simulation)
+    
     # plt.figure()
     # plt.plot(x, mean_distance_initial, label="Mean distance to initial")
     # plt.plot(time, theory, "k--", label="x")
