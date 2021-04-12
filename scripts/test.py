@@ -10,38 +10,58 @@ import trajectory
 from divergence import load_divergence_dict, WH_evo_rate
 sys.path.append("../scripts/")
 
-def test():
-    d = {}
-    for idx1 in ["a", "b", "c"]:
-        d[idx1] = {}
-        for idx2 in ["A", "B", "C"]:
-            d[idx1][idx2] = {}
-            for idx3 in ["d", "e", "f"]:
-                d[idx1][idx2][idx3] = {}
-                for idx4 in ["D", "E", "F"]:
-                    d[idx1][idx2][idx3][idx4] = np.random.rand(10)
-                    d[idx1][idx2][idx3][idx4] += 2
-    return d
+
+def delta(t, mu_plus, mu_minus):
+    prefactor = (2 * mu_plus * mu_minus) / (mu_plus + mu_minus)
+    result = prefactor * (t - (1 - np.exp(-(mu_plus + mu_minus) * t)) / (mu_plus + mu_minus))
+    return result
 
 
+def distance_initial(t, mu_plus, mu_minus):
+    prefactor = (2 * mu_plus * mu_minus) / (mu_plus + mu_minus)**2
+    distance = prefactor * (1 - np.exp(-(mu_plus + mu_minus) * t))
+    return distance
 
-if name == "__main__":
-    test()
 
-# x = np.array([[[0.,  1.,  2.,  3.],
-#                [4.,  5.,  6.,  7.],
-#                [8.,  9., 10., 11.],
-#                [12., 13., 14., 15.],
-#                [16., 17., 18., 19.]],
-#               [[0.5,  1.5,  2.5,  3.5],
-#                [4.5,  5.5,  6.5,  7.5],
-#                [8.5,  9.5, 10.5, 11.5],
-#                [12.5, 13.5, 14.5, 15.5],
-#                [16.5, 17.5, 18.5, 19.5]]])
-#
-# idx1 = np.array([0, 1])
-# idx2 = np.array([0, 1, 2, 3, 4])
-# idx3 = np.array([0, 2, 2, 0, 1])
-#
-# y = x[idx1[:, np.newaxis, np.newaxis], idx2, idx3]
-# y = x[idx1[:, np.newaxis, np.newaxis], idx2, idx3[np.newaxis, np.newaxis, :]]
+def distance_approx(t, mu_plus, mu_minus):
+    return (2 * mu_plus * mu_minus) / (mu_plus + mu_minus) * t
+
+
+def delta_relative(t, mu_plus, mu_minus):
+    return (mu_plus + mu_minus) * t / (1 - np.exp(-(mu_plus + mu_minus) * t)) - 1
+
+
+if __name__ == "__main__":
+    t = np.linspace(0.001, 100, 1000)
+
+    # mu_plus = 0.0011096
+    # mu_minus = 0.01154495
+    # delta = delta(t, mu_plus, mu_minus)
+    # distance = distance_initial(t, mu_plus, mu_minus)
+    # distance_approx = distance_approx(t, mu_plus, mu_minus)
+    # delta_r = delta / distance
+    # delta_r2 = delta_relative(t,mu_plus, mu_minus)
+    #
+    # plt.figure()
+    # plt.plot(t, distance, label="Real distance")
+    # plt.plot(t, distance_approx, label="Without reversions")
+    # plt.plot(t, delta, label="Error")
+    # plt.plot(t, delta_r, label="Relative error")
+    # plt.plot(t, delta_r2, "k--", label="Relative error analytical")
+    # plt.legend()
+    # plt.grid()
+
+    evo_rates = {
+        "pol": {"consensus": {"first": 1.98e-6, "second": 1.18e-6, "third": 5.96e-6},
+                "non_consensus": {"first": 2.88e-5, "second": 4.549e-5, "third": 2.06e-5}}
+    }
+
+    plt.figure()
+    for nuc in ["first", "second", "third"]:
+        plt.plot(t, delta_relative(t, evo_rates["pol"]["consensus"][nuc]
+                                   * 365, evo_rates["pol"]["non_consensus"][nuc] * 365), label=nuc+" nucleotides")
+        plt.legend()
+    plt.xlabel("Time [years]")
+    plt.ylabel("Relative error")
+    plt.grid()
+    plt.show()
