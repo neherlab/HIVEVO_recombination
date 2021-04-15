@@ -11,11 +11,7 @@ import tools
 import divergence
 sys.path.append("../scripts/")
 
-
-
-if __name__ == "__main__":
-    region = "pol"
-    patient_name = "p1"
+def initial_traj_under_threshold(region, patient_name):
     patient = Patient.load(patient_name)
     aft = patient.get_allele_frequency_trajectories(region)
     # Masking low depth
@@ -35,10 +31,14 @@ if __name__ == "__main__":
     data = aft_initial[:, np.where(np.sum(mask, axis=0))]
     data = data[:,0,:]
 
-    # plt.figure()
-    # plt.plot(data)
-    # plt.show()
+    plt.figure()
+    plt.plot(data)
+    plt.show()
 
+def divergence_contribution(region, patient_name):
+    patient = Patient.load(patient_name)
+    aft = patient.get_allele_frequency_trajectories(region)
+    initial_idx = patient.get_initial_indices(region)
     divergence_matrix = divergence.divergence_matrix(aft)
     div = divergence_matrix[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
     div = div[:, 0, :]
@@ -52,3 +52,12 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid()
     plt.show()
+
+
+if __name__ == "__main__":
+    region = "pol"
+    patient_name = "p1"
+
+    # initial_traj_under_threshold(region, patient_name)
+    # divergence_contribution(region, patient_name)
+    
