@@ -94,7 +94,7 @@ def get_fitness_mask(patient, region, aft, consensus, range):
     return np.logical_and(fitness_mask, consensus_mask)
 
 
-def get_position_mask(aft, position):
+def get_site_mask(aft, position):
     """
     Returns a 1D boolean vector of size aft.shape[-1] where True are the positions corresponding to 1st 2nd or
     3rd (position in [1,2,3]).
@@ -113,7 +113,7 @@ def get_position_mask(patient, region, aft, consensus, position):
 
     assert consensus in [True, False], "consensus must be True or False"
 
-    position_mask = get_position_mask(aft, position)
+    position_mask = get_site_mask(aft, position)
 
     if consensus:
         consensus_mask = get_consensus_mask(patient, region, aft)
@@ -164,24 +164,24 @@ def get_mean_divergence_patient(patient, region, consensus=False):
     consensus_third_div = np.mean(div[:, third_consensus_mask], axis=-1)
     non_consensus_third_div = np.mean(div[:, third_non_consensus_mask], axis=-1)
     all_div = np.mean(div, axis=-1)
-    all_first = np.mean(div, axis=-1)
-    all_first = np.mean(div, axis=-1)
-    all_first = np.mean(div, axis=-1)
+    all_first_div = np.mean(div[:, get_site_mask(aft, 1)], axis=-1)
+    all_second_div = np.mean(div[:, get_site_mask(aft, 2)], axis=-1)
+    all_third_div = np.mean(div[:, get_site_mask(aft, 3)], axis=-1)
 
     div_dict = {"consensus": {}, "non_consensus": {}, "all":{}}
     div_dict["consensus"] = {"low": consensus_low_div, "high": consensus_high_div, "all": consensus_div,
                              "first": consensus_first_div,  "second": consensus_second_div, "third": consensus_third_div}
     div_dict["non_consensus"] = {"low": non_consensus_low_div, "high": non_consensus_high_div, "all": non_consensus_div,
                                  "first": non_consensus_first_div,  "second": non_consensus_second_div, "third": non_consensus_third_div}
-    div_dict["all"] = {"all": all_div, "first": all_first_div, "second": all_second_div, "third": all_third_div,}
+    div_dict["all"] = {"all": all_div, "first": all_first_div, "second": all_second_div, "third": all_third_div}
 
     return div_dict
 
 
-def make_divergence_dict(time):
+def make_divergence_dict(time, consensus=False):
     """
     Creates a dictionary with the divergence in time averaged over patients.
-    Format of the dictionary : dict[region][consensus/non_consensus][high/low/all/first/second/third]
+    Format of the dictionary : dict[region][consensus/non_consensus/all][high/low/all/first/second/third]
     """
 
     regions = ["env", "pol", "gag"]
@@ -190,16 +190,18 @@ def make_divergence_dict(time):
 
     divergence_dict = {}
     for region in regions:
-        divergence_dict[region] = {"consensus": {}, "non_consensus": {}}
+        divergence_dict[region] = {"consensus": {}, "non_consensus": {}, "all":{}}
 
         nb_traj = np.zeros_like(time)
         for key in fitness_keys:
             divergence_dict[region]["consensus"][key] = np.zeros_like(time, dtype=float)
             divergence_dict[region]["non_consensus"][key] = np.zeros_like(time, dtype=float)
+            if key in ["all", "first", "second", "third"]:
+                divergence_dict[region]["all"][key] = np.zeros_like(time, dtype=float)
 
         for patient_name in patient_names:
             patient = Patient.load(patient_name)
-            patient_div_dict = get_mean_divergence_patient(patient, region)
+            patient_div_dict = get_mean_divergence_patient(patient, region, consensus)
 
             tmp_time = time[time < patient.dsi[-1]]
             nb_traj[:len(tmp_time)] += 1
@@ -215,18 +217,25 @@ def make_divergence_dict(time):
                 divergence_dict[region]["non_consensus"][key][:len(
                     tmp_time)] += patient_div_dict["non_consensus"][key]
 
-        for key1 in ["consensus", "non_consensus"]:
-            for key2 in fitness_keys:
+            for key in ["all", "first", "second", "third"]:
+                patient_div_dict["all"][key] = np.interp(
+                    tmp_time, patient.dsi, patient_div_dict["all"][key])
+                divergence_dict[region]["all"][key][:len(
+                    tmp_time)] += patient_div_dict["all"][key]
+
+
+        for key1 in ["consensus", "non_consensus", "all"]:
+            for key2 in divergence_dict[region][key1].keys():
                 divergence_dict[region][key1][key2] = divergence_dict[region][key1][key2] / nb_traj
 
     return divergence_dict
 
 
-def save_divergence_dict(divergence_dict):
+def save_divergence_dict(divergence_dict, filename="divergence_dict"):
     """
     Saves the divergence dict as a pickle.
     """
-    with open("divergence_dict", "wb") as file:
+    with open(filename, "wb") as file:
         pickle.dump(divergence_dict, file)
 
 
@@ -255,7 +264,6 @@ if __name__ == "__main__":
     colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
     regions = ["env", "pol", "gag"]
 
-    patient = Patient.load("p1")
-    region = "pol"
-    founder_div_dict = get_mean_divergence_patient(patient, region)
-    consensus_div_dict = get_mean_divergence_patient(patient, region, consensus=True)
+    time = np.arange(0, 3100, 100)
+    divergence_dict = make_divergence_dict(time, consensus=True)
+    save_divergence_dict(divergence_dict, filename="divergence_dict_consensus")
