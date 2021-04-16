@@ -94,17 +94,26 @@ def get_fitness_mask(patient, region, aft, consensus, range):
     return np.logical_and(fitness_mask, consensus_mask)
 
 
+def get_position_mask(aft, position):
+    """
+    Returns a 1D boolean vector of size aft.shape[-1] where True are the positions corresponding to 1st 2nd or
+    3rd (position in [1,2,3]).
+    """
+    assert position in [1, 2, 3], "Position must be 1 2 or 3."
+    position_mask = np.zeros(aft.shape[-1], dtype=bool)
+    position_mask[position - 1::3] = True
+    return position_mask
+
+
 def get_position_mask(patient, region, aft, consensus, position):
     """
     Returns a 1D boolean vector of size aft.shape[-1] where True are the positions corresponding to 1st, 2nd
     or 3rd positions and consensus (or not).
     """
 
-    assert position in [1, 2, 3], "Position must be 1 2 or 3."
     assert consensus in [True, False], "consensus must be True or False"
 
-    position_mask = np.zeros(aft.shape[-1], dtype=bool)
-    position_mask[position - 1::3] = True
+    position_mask = get_position_mask(aft, position)
 
     if consensus:
         consensus_mask = get_consensus_mask(patient, region, aft)
@@ -154,12 +163,17 @@ def get_mean_divergence_patient(patient, region, consensus=False):
     non_consensus_second_div = np.mean(div[:, second_non_consensus_mask], axis=-1)
     consensus_third_div = np.mean(div[:, third_consensus_mask], axis=-1)
     non_consensus_third_div = np.mean(div[:, third_non_consensus_mask], axis=-1)
+    all_div = np.mean(div, axis=-1)
+    all_first = np.mean(div, axis=-1)
+    all_first = np.mean(div, axis=-1)
+    all_first = np.mean(div, axis=-1)
 
-    div_dict = {"consensus": {}, "non_consensus": {}}
+    div_dict = {"consensus": {}, "non_consensus": {}, "all":{}}
     div_dict["consensus"] = {"low": consensus_low_div, "high": consensus_high_div, "all": consensus_div,
                              "first": consensus_first_div,  "second": consensus_second_div, "third": consensus_third_div}
     div_dict["non_consensus"] = {"low": non_consensus_low_div, "high": non_consensus_high_div, "all": non_consensus_div,
                                  "first": non_consensus_first_div,  "second": non_consensus_second_div, "third": non_consensus_third_div}
+    div_dict["all"] = {"all": all_div, "first": all_first_div, "second": all_second_div, "third": all_third_div,}
 
     return div_dict
 
