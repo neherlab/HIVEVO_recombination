@@ -13,13 +13,20 @@ import tools
 sys.path.append("../scripts/")
 
 
-def divergence_matrix(aft):
+def divergence_matrix(patient, region, aft, consensus=False):
     """
-    Returns the divergence matrix in time (same shape as the aft).
+    Returns the divergence matrix in time (same shape as the aft). With consensus=True, returns the divergence
+    to the consensus sequence instead.
     """
     div = np.zeros_like(aft)
-    for ii in range(aft.shape[0]):
-        div[ii, :, :] = aft[0, :, :] * (1 - aft[ii, :, :])
+    if consensus:
+        consensus_mask = get_consensus_mask(patient, region, aft)
+        non_consensus_mask = get_non_consensus_mask(patient, region, aft)
+        for ii in range(aft.shape[0]):
+            div[ii, :, :] = non_consensus_mask * aft[ii, :, :] + consensus_mask * (1-aft[ii, :, :])
+    else:
+        for ii in range(aft.shape[0]):
+            div[ii, :, :] = aft[0, :, :] * (1 - aft[ii, :, :])
 
     return div
 
@@ -107,14 +114,15 @@ def get_position_mask(patient, region, aft, consensus, position):
     return np.logical_and(position_mask, consensus_mask)
 
 
-def get_mean_divergence_patient(patient, region):
+def get_mean_divergence_patient(patient, region, consensus=False):
     """
     Returns a dictionary with the divergence over time for different categories.
+    If consensus==True computes the divergence to the HIV consensus sequence instead of the divergence to founder sequence.
     """
 
     # Needed data
     aft = patient.get_allele_frequency_trajectories(region)
-    div_3D = divergence_matrix(aft)
+    div_3D = divergence_matrix(patient, region, aft, consensus)
     initial_idx = patient.get_initial_indices(region)
     div = div_3D[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
     div = div[:, 0, :]
@@ -237,21 +245,21 @@ if __name__ == "__main__":
     # divergence_dict = make_divergence_dict(time)
     # save_divergence_dict(divergence_dict)
 
-    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    region = "pol"
-    nb_consensus = np.array([0,0,0])
-    for patient_name in patient_names:
-        patient = Patient.load("p1")
-        aft = patient.get_allele_frequency_trajectories(region)
-        mask = get_consensus_mask(patient, region, aft)
-        mask1 = mask[::3]
-        mask2 = mask[1::3]
-        mask3 = mask[2::3]
-        nb_consensus += [np.sum(mask1), np.sum(mask2), np.sum(mask3)]
-
-    nb_consensus = nb_consensus / len(patient_names) / (aft.shape[-1]/3)
-
-    print(nb_consensus)
+    # patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
+    # region = "gag"
+    # nb_consensus = np.array([0, 0, 0])
+    # for patient_name in patient_names:
+    #     patient = Patient.load("p1")
+    #     aft = patient.get_allele_frequency_trajectories(region)
+    #     mask = get_consensus_mask(patient, region, aft)
+    #     mask1 = mask[::3]
+    #     mask2 = mask[1::3]
+    #     mask3 = mask[2::3]
+    #     nb_consensus += [np.sum(mask1), np.sum(mask2), np.sum(mask3)]
+    #
+    # nb_consensus = nb_consensus / len(patient_names) / (aft.shape[-1] / 3)
+    #
+    # print(nb_consensus)
 
     # plt.figure()
     # for key1 in divergence_dict[region].keys():
@@ -262,3 +270,8 @@ if __name__ == "__main__":
     # plt.ylabel("Divergence")
     # plt.grid()
     # plt.show()
+
+    patient = Patient.load("p1")
+    region = "pol"
+    founder_div_dict = get_mean_divergence_patient(patient, region)
+    consensus_div_dict = get_mean_divergence_patient(patient, region, consensus=True)
