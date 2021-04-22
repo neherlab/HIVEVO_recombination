@@ -48,8 +48,10 @@ def get_mean_in_time(trajectories, nb_bins=20, freq_range=[0.4, 0.6]):
     mean = []
     for ii in range(len(freqs)):
         mean = mean + [np.sum(freqs[ii]) + fixed[ii]]
-        mean[-1] /= (len(freqs[ii]) + fixed[ii] + lost[ii])
-
+        if len(freqs[ii]) + fixed[ii] + lost[ii] != 0:
+            mean[-1] /= (len(freqs[ii]) + fixed[ii] + lost[ii])
+        else:
+            mean[-1] = np.nan
     nb_active = [len(freq) for freq in freqs]
     nb_dead = [fixed[ii] + lost[ii] for ii in range(len(fixed))]
 
@@ -72,6 +74,15 @@ def make_mean_in_time_dict(trajectories):
     return times, means, freq_ranges
 
 
+def bootstrap_patient_names(patient_names=["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]):
+    "Returns a list of patient name bootstrap with replacement (patient can appear more than once)."
+    choice = np.random.choice(range(len(patient_names)), len(patient_names))
+    names = []
+    for ii in choice:
+        names += [patient_names[ii]]
+    return names
+
+
 def bootstrap_mean_in_time(trajectories, region, mut_type, freq_range, nb_bootstrap=10):
     """
     Computes the mean_in_time for the given region and mutation type (rev, non_rev etc...) nb_boostrap time
@@ -80,14 +91,21 @@ def bootstrap_mean_in_time(trajectories, region, mut_type, freq_range, nb_bootst
 
     means = []
     for ii in range(nb_bootstrap):
-        time, mean, _, _ = get_mean_in_time(trajectories[region][mut_type], freq_range=freq_range)
+        # Bootstrapping trajectories
+        bootstrap_names = bootstrap_patient_names()
+        bootstrap_trajectories = []
+        for name in bootstrap_names:
+            bootstrap_trajectories += [traj for traj in trajectories[region][mut_type] if traj.patient==name]
+
+        # Computing the mean in time for each boostrap
+        time, mean, _, _ = get_mean_in_time(bootstrap_trajectories, freq_range=freq_range)
         means += [[mean]]
 
     means = np.array(means)
     average = np.mean(means, axis=0)
     std = np.std(means, axis=0)
 
-    return average, std
+    return time, average, std
 
 
 def make_pfix(nb_bin=8):
@@ -124,7 +142,8 @@ def get_trajectories_offset(trajectories, freq_range):
 
 if __name__ == "__main__":
     trajectories = load_trajectory_dict("trajectory_dict")
-    times, means, freq_ranges = make_mean_in_time_dict(trajectories)
+    # times, means, freq_ranges = make_mean_in_time_dict(trajectories)
+    time, mean, std = bootstrap_mean_in_time(trajectories, "pol", "rev", [0.6, 0.8])
     # trajectories_scheme = get_trajectories_offset(trajectories["all"]["rev"], [0.4, 0.6])
 
     # fontsize=16
