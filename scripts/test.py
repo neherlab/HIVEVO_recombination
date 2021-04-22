@@ -6,14 +6,11 @@ import matplotlib.pyplot as plt
 import sys
 import os
 from hivevo.patients import Patient
+from divergence import get_non_consensus_mask
 import trajectory
-import tools
-import divergence
 sys.path.append("../scripts/")
 
-def initial_traj_under_threshold(region, patient_name):
-    patient = Patient.load(patient_name)
-    aft = patient.get_allele_frequency_trajectories(region)
+def get_sweep_mask(patient, aft, threshold_low = 0.05):
     # Masking low depth
     depth = trajectory.get_depth(patient, region)
     depth = np.tile(depth, (6, 1, 1))
@@ -21,43 +18,21 @@ def initial_traj_under_threshold(region, patient_name):
     aft.mask = np.logical_or(aft.mask, ~depth)
 
     initial_idx = patient.get_initial_indices(region)
-    aft_initial = aft[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
-    aft_initial = aft_initial[:,0,:]
-
-    threshold_low = 0.05
-    threshold_high = 0.95
+    aft_initial = aft[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis],
+                      initial_idx, np.arange(aft.shape[-1])]
+    aft_initial = aft_initial[:, 0, :]
 
     mask = aft_initial <= threshold_low
-    data = aft_initial[:, np.where(np.sum(mask, axis=0))]
-    data = data[:,0,:]
+    mask = np.sum(mask, axis=0)
+    return mask
 
-    plt.figure()
-    plt.plot(data)
-    plt.show()
-
-def divergence_contribution(region, patient_name):
-    patient = Patient.load(patient_name)
-    aft = patient.get_allele_frequency_trajectories(region)
-    initial_idx = patient.get_initial_indices(region)
-    divergence_matrix = divergence.divergence_matrix(aft)
-    div = divergence_matrix[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
-    div = div[:, 0, :]
-    hist, bins = np.histogram(div[-3:,:], bins=1000)
-    bins = bins[:-1]
-    hist_sum = np.cumsum(hist)
-    hist_sum = hist_sum / np.max(hist_sum)
-
-    plt.figure()
-    plt.plot(bins, hist_sum, label="hist")
-    plt.legend()
-    plt.grid()
-    plt.show()
 
 
 if __name__ == "__main__":
     region = "pol"
-    patient_name = "p1"
-
-    # initial_traj_under_threshold(region, patient_name)
-    # divergence_contribution(region, patient_name)
-    
+    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
+    for patient_name in patient_names:
+        patient = Patient.load(patient_name)
+        aft = patient.get_allele_frequency_trajectories(region)
+        non_consensus = get_non_consensus_mask(patient, region, aft)
+        sweep = get_sweep_mask(patient, aft)
