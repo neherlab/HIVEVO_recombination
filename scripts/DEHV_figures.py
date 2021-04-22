@@ -102,8 +102,8 @@ def bootstrap_mean_in_time(trajectories, region, mut_type, freq_range, nb_bootst
         means += [[mean]]
 
     means = np.array(means)
-    average = np.mean(means, axis=0)
-    std = np.std(means, axis=0)
+    average = np.nanmean(means, axis=0)
+    std = np.nanstd(means, axis=0)
 
     return time, average, std
 
