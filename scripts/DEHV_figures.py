@@ -12,7 +12,22 @@ import pickle
 sys.path.append("../../scripts/")
 
 
-def get_mean_in_time(trajectories, nb_bins=20, freq_range=[0.4, 0.6]):
+def create_time_bins(bin_size=500):
+    """
+    Create time bins for the mean in time analysis. It does homogeneous bins, except for the one at t=0 that
+    only takes point where t=0. Bin_size is in days.
+    """
+    time_bins = [-5, 5]
+    interval = [-600, 3000]
+    while time_bins[0] > interval[0]:
+        time_bins = [time_bins[0]-bin_size] + time_bins
+    while time_bins[-1] < interval[1]:
+        time_bins = time_bins + [time_bins[-1]+bin_size]
+
+    return np.array(time_bins)
+
+
+def get_mean_in_time(trajectories, bin_size=500, freq_range=[0.4, 0.6]):
     """
     Computes the mean frequency in time of a set of trajectories from the point they are seen in the freq_range window.
     Returns the middle of the time bins and the computed frequency mean.
@@ -20,7 +35,7 @@ def get_mean_in_time(trajectories, nb_bins=20, freq_range=[0.4, 0.6]):
     trajectories = copy.deepcopy(trajectories)
 
     # Create bins and select trajectories going through the freq_range
-    time_bins = np.linspace(-677, 3000, nb_bins)
+    time_bins = create_time_bins(bin_size)
     trajectories = [traj for traj in trajectories if np.sum(np.logical_and(
         traj.frequencies >= freq_range[0], traj.frequencies < freq_range[1]), dtype=bool)]
 
@@ -164,10 +179,10 @@ def get_trajectories_offset(trajectories, freq_range):
                                       freq_range[0], traj.frequencies < freq_range[1]))[0][0]
         traj.t = traj.t - traj.t[idx]
         if traj.fixation == "fixed":
-            traj.t = np.append(traj.t, [traj.t[-1] + 300, 3000])
+            traj.t = np.append(traj.t, [traj.t[-1] + 500, 3000])
             traj.frequencies = np.append(traj.frequencies, [1, 1])
         elif traj.fixation == "lost":
-            traj.t = np.append(traj.t, [traj.t[-1] + 300, 3000])
+            traj.t = np.append(traj.t, [traj.t[-1] + 500, 3000])
             traj.frequencies = np.append(traj.frequencies, [0, 0])
 
     return trajectories
@@ -176,10 +191,8 @@ def get_trajectories_offset(trajectories, freq_range):
 if __name__ == "__main__":
     trajectories = load_trajectory_dict("trajectory_dict")
     # times, means, freq_ranges = make_mean_in_time_dict(trajectories)
-    # bootstrap_dict, times = make_bootstrap_mean_dict(trajectories, 100)
-    bootstrap_dict = load_bootstrap_dict()
-    time_bins = np.linspace(-677, 3000, 20)
-    times = 0.5*(time_bins[1:]+time_bins[:-1])
+    bootstrap_dict, times = make_bootstrap_mean_dict(trajectories, 10)
+    # bootstrap_dict = load_bootstrap_dict()
     trajectories_scheme = get_trajectories_offset(trajectories["all"]["rev"], [0.4, 0.6])
 
     fontsize = 16
