@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import copy
 import os
 import sys
+import pickle
 sys.path.append("../../scripts/")
 
 
@@ -95,17 +96,49 @@ def bootstrap_mean_in_time(trajectories, region, mut_type, freq_range, nb_bootst
         bootstrap_names = bootstrap_patient_names()
         bootstrap_trajectories = []
         for name in bootstrap_names:
-            bootstrap_trajectories += [traj for traj in trajectories[region][mut_type] if traj.patient==name]
+            bootstrap_trajectories += [traj for traj in trajectories[region]
+                                       [mut_type] if traj.patient == name]
 
         # Computing the mean in time for each boostrap
         time, mean, _, _ = get_mean_in_time(bootstrap_trajectories, freq_range=freq_range)
         means += [[mean]]
 
     means = np.array(means)
-    average = np.nanmean(means, axis=0)
-    std = np.nanstd(means, axis=0)
+    average = np.nanmean(means, axis=0)[0, :]
+    std = np.nanstd(means, axis=0)[0, :]
 
     return time, average, std
+
+
+def make_bootstrap_mean_dict(trajectory_dict, nb_bootstrap=10):
+    """
+    Generates the dictionary for bootstrapped mean frequency in time. Does it for all regions, the 3 frequency windows
+    and rev / non_rav mutations.
+    Keys are the following : dict["rev"/"non_rev"]["[0.2,0.4]","[0.4,0.6]","[0.6,0.8]"]
+    """
+    bootstrap_dict = {"rev": {}, "non_rev": {}}
+    for key1 in ["rev", "non_rev"]:
+        for key2 in [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8]]:
+            times , mean, std = bootstrap_mean_in_time(trajectory_dict, "all", key1, key2, nb_bootstrap)
+            bootstrap_dict[key1][str(key2)] = {"mean": mean, "std": std}
+
+    return bootstrap_dict, times
+
+
+def save(obj, filename):
+    """
+    Saves the given object using pickle.
+    """
+    with open(filename, "wb") as f:
+        pickle.dump(obj, f)
+
+def load_bootstrap_dict(path="bootstrap_dict"):
+    "Load the dict from pickle."
+    bootstrap_dict = {}
+    with open(path, 'rb') as file:
+        bootstrap_dict = pickle.load(file)
+
+    return bootstrap_dict
 
 
 def make_pfix(nb_bin=8):
@@ -143,54 +176,57 @@ def get_trajectories_offset(trajectories, freq_range):
 if __name__ == "__main__":
     trajectories = load_trajectory_dict("trajectory_dict")
     # times, means, freq_ranges = make_mean_in_time_dict(trajectories)
-    time, mean, std = bootstrap_mean_in_time(trajectories, "pol", "rev", [0.6, 0.8])
-    # trajectories_scheme = get_trajectories_offset(trajectories["all"]["rev"], [0.4, 0.6])
+    # bootstrap_dict, times = make_bootstrap_mean_dict(trajectories, 100)
+    bootstrap_dict = load_bootstrap_dict()
+    time_bins = np.linspace(-677, 3000, 20)
+    times = 0.5*(time_bins[1:]+time_bins[:-1])
+    trajectories_scheme = get_trajectories_offset(trajectories["all"]["rev"], [0.4, 0.6])
 
-    # fontsize=16
-    # grid_alpha = 0.5
-    # colors = ["C0","C1","C2","C4"]
-    # markersize=12
-    # freq_ranges = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8]]
-    # regions = ["env","pol","gag"]
-    # lines = ["-","--"]
-    #
-    # fig, axs = plt.subplots(ncols=2, nrows=1, figsize=(14,7), sharey=True)
-    #
-    # # Plot left
-    #
-    # for traj in trajectories_scheme:
-    #     axs[0].plot(traj.t, traj.frequencies, "k-", alpha=0.1, linewidth=1)
-    #
-    # axs[0].plot(times, means["[0.4, 0.6]"]["all"]["rev"], '-', color=colors[1])
-    #
-    # axs[0].set_xlabel("Time [days]", fontsize=fontsize)
-    # axs[0].set_ylabel("Frequency", fontsize=fontsize)
-    # axs[0].set_ylim([-0.03, 1.03])
-    # axs[0].grid(grid_alpha)
-    # axs[0].set_xlim([-677, 3000])
-    #
-    # line1, = axs[0].plot([0], [0], "k-")
-    # line2, = axs[0].plot([0], [0], "-", color=colors[1])
-    # axs[0].legend([line1, line2], ["Individual trajectories", "Average"], fontsize=fontsize, loc="lower right")
-    #
-    #
-    # # Plot right
-    # for ii, freq_range in enumerate(freq_ranges):
-    #     axs[1].plot(times, means[str(freq_range)]["all"]["rev"], "-", color=colors[ii])
-    #     axs[1].plot(times, means[str(freq_range)]["all"]["non_rev"], "--", color=colors[ii])
-    #
-    # line1, = axs[1].plot([0], [0], "k-")
-    # line2, = axs[1].plot([0], [0], "k--")
-    # line3, = axs[1].plot([0], [0], "-", color=colors[0])
-    # line4, = axs[1].plot([0], [0], "-", color=colors[1])
-    # line5, = axs[1].plot([0], [0], "-", color=colors[2])
-    #
-    # axs[1].set_xlabel("Time [days]", fontsize=fontsize)
-    # # axs[1].set_ylabel("Frequency", fontsize=fontsize)
-    # axs[1].set_ylim([-0.03, 1.03])
-    # axs[1].grid(grid_alpha)
-    # axs[1].legend([line3, line4, line5, line1, line2], ["[0.2, 0.4]", "[0.4, 0.6]", "[0.6, 0.8]", "reversion", "non-reversion"], fontsize=fontsize, ncol=2, loc="lower right")
-    #
-    # plt.tight_layout()
-    # plt.savefig("Reversion_PAC.png", format="png")
-    # plt.show()
+    fontsize = 16
+    grid_alpha = 0.5
+    colors = ["C0", "C1", "C2", "C4"]
+    freq_ranges = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8]]
+
+    fig, axs = plt.subplots(ncols=2, nrows=1, figsize=(14, 7), sharey=True)
+
+    # Plot left
+
+    for traj in trajectories_scheme:
+        axs[0].plot(traj.t, traj.frequencies, "k-", alpha=0.1, linewidth=1)
+
+    axs[0].plot(times,bootstrap_dict["rev"]["[0.4, 0.6]"]["mean"], '-', color=colors[1])
+
+    axs[0].set_xlabel("Time [days]", fontsize=fontsize)
+    axs[0].set_ylabel("Frequency", fontsize=fontsize)
+    axs[0].set_ylim([-0.03, 1.03])
+    axs[0].grid(grid_alpha)
+    axs[0].set_xlim([-677, 3000])
+
+    line1, = axs[0].plot([0], [0], "k-")
+    line2, = axs[0].plot([0], [0], "-", color=colors[1])
+    axs[0].legend([line1, line2], ["Individual trajectories", "Average"],
+                  fontsize=fontsize, loc="lower right")
+
+    # Plot right
+    for ii, freq_range in enumerate(freq_ranges):
+        axs[1].errorbar(times, bootstrap_dict["rev"][str(freq_range)]["mean"],
+                        yerr=bootstrap_dict["rev"][str(freq_range)]["std"], fmt="-", color=colors[ii])
+        axs[1].errorbar(times, bootstrap_dict["non_rev"][str(freq_range)]["mean"],
+                        yerr=bootstrap_dict["non_rev"][str(freq_range)]["std"], fmt="--", color=colors[ii])
+
+    line1, = axs[1].plot([0], [0], "k-")
+    line2, = axs[1].plot([0], [0], "k--")
+    line3, = axs[1].plot([0], [0], "-", color=colors[0])
+    line4, = axs[1].plot([0], [0], "-", color=colors[1])
+    line5, = axs[1].plot([0], [0], "-", color=colors[2])
+
+    axs[1].set_xlabel("Time [days]", fontsize=fontsize)
+    # axs[1].set_ylabel("Frequency", fontsize=fontsize)
+    axs[1].set_ylim([-0.03, 1.03])
+    axs[1].grid(grid_alpha)
+    axs[1].legend([line3, line4, line5, line1, line2], ["[0.2, 0.4]", "[0.4, 0.6]", "[0.6, 0.8]",
+                                                        "reversion", "non-reversion"], fontsize=fontsize, ncol=2, loc="lower right")
+
+    plt.tight_layout()
+    plt.savefig("Reversion_DEHV.png", format="png")
+    plt.show()
