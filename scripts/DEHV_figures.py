@@ -12,7 +12,7 @@ import pickle
 sys.path.append("../../scripts/")
 
 
-def create_time_bins(bin_size=500):
+def create_time_bins(bin_size=400):
     """
     Create time bins for the mean in time analysis. It does homogeneous bins, except for the one at t=0 that
     only takes point where t=0. Bin_size is in days.
@@ -20,14 +20,14 @@ def create_time_bins(bin_size=500):
     time_bins = [-5, 5]
     interval = [-600, 3000]
     while time_bins[0] > interval[0]:
-        time_bins = [time_bins[0]-bin_size] + time_bins
+        time_bins = [time_bins[0] - bin_size] + time_bins
     while time_bins[-1] < interval[1]:
-        time_bins = time_bins + [time_bins[-1]+bin_size]
+        time_bins = time_bins + [time_bins[-1] + bin_size]
 
     return np.array(time_bins)
 
 
-def get_mean_in_time(trajectories, bin_size=500, freq_range=[0.4, 0.6]):
+def get_mean_in_time(trajectories, bin_size=400, freq_range=[0.4, 0.6]):
     """
     Computes the mean frequency in time of a set of trajectories from the point they are seen in the freq_range window.
     Returns the middle of the time bins and the computed frequency mean.
@@ -134,7 +134,7 @@ def make_bootstrap_mean_dict(trajectory_dict, nb_bootstrap=10):
     bootstrap_dict = {"rev": {}, "non_rev": {}}
     for key1 in ["rev", "non_rev"]:
         for key2 in [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8]]:
-            times , mean, std = bootstrap_mean_in_time(trajectory_dict, "all", key1, key2, nb_bootstrap)
+            times, mean, std = bootstrap_mean_in_time(trajectory_dict, "all", key1, key2, nb_bootstrap)
             bootstrap_dict[key1][str(key2)] = {"mean": mean, "std": std}
 
     return bootstrap_dict, times
@@ -146,6 +146,7 @@ def save(obj, filename):
     """
     with open(filename, "wb") as f:
         pickle.dump(obj, f)
+
 
 def load_bootstrap_dict(path="bootstrap_dict"):
     "Load the dict from pickle."
@@ -191,12 +192,16 @@ def get_trajectories_offset(trajectories, freq_range):
 if __name__ == "__main__":
     trajectories = load_trajectory_dict("trajectory_dict")
     # times, means, freq_ranges = make_mean_in_time_dict(trajectories)
-    bootstrap_dict, times = make_bootstrap_mean_dict(trajectories, 10)
-    # bootstrap_dict = load_bootstrap_dict()
+    # bootstrap_dict, times = make_bootstrap_mean_dict(trajectories, 100)
+    # save(bootstrap_dict, "bootstrap_dict")
+    times = create_time_bins()
+    times = 0.5 * (times[:-1] + times[1:])
+    bootstrap_dict = load_bootstrap_dict()
     trajectories_scheme = get_trajectories_offset(trajectories["all"]["rev"], [0.4, 0.6])
 
     fontsize = 16
     grid_alpha = 0.5
+    fill_alpha = 0.15
     colors = ["C0", "C1", "C2", "C4"]
     freq_ranges = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8]]
 
@@ -207,7 +212,10 @@ if __name__ == "__main__":
     for traj in trajectories_scheme:
         axs[0].plot(traj.t, traj.frequencies, "k-", alpha=0.1, linewidth=1)
 
-    axs[0].plot(times,bootstrap_dict["rev"]["[0.4, 0.6]"]["mean"], '-', color=colors[1])
+    mean = bootstrap_dict["rev"]["[0.4, 0.6]"]["mean"]
+    std = bootstrap_dict["rev"]["[0.4, 0.6]"]["std"]
+    axs[0].plot(times, mean, '-', color=colors[1])
+    axs[0].fill_between(times, mean - std, mean + std, color=colors[1], alpha=fill_alpha)
 
     axs[0].set_xlabel("Time [days]", fontsize=fontsize)
     axs[0].set_ylabel("Frequency", fontsize=fontsize)
@@ -222,10 +230,11 @@ if __name__ == "__main__":
 
     # Plot right
     for ii, freq_range in enumerate(freq_ranges):
-        axs[1].errorbar(times, bootstrap_dict["rev"][str(freq_range)]["mean"],
-                        yerr=bootstrap_dict["rev"][str(freq_range)]["std"], fmt="-", color=colors[ii])
-        axs[1].errorbar(times, bootstrap_dict["non_rev"][str(freq_range)]["mean"],
-                        yerr=bootstrap_dict["non_rev"][str(freq_range)]["std"], fmt="--", color=colors[ii])
+        for key, line in zip(["rev", "non_rev"], ["-", "--"]):
+            mean = bootstrap_dict[key][str(freq_range)]["mean"]
+            std = bootstrap_dict[key][str(freq_range)]["std"]
+            axs[1].plot(times, mean, line, color=colors[ii])
+            axs[1].fill_between(times, mean - std, mean + std, color=colors[ii], alpha=fill_alpha)
 
     line1, = axs[1].plot([0], [0], "k-")
     line2, = axs[1].plot([0], [0], "k--")
