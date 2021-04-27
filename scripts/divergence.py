@@ -23,7 +23,7 @@ def divergence_matrix(patient, region, aft, consensus=False):
         consensus_mask = get_consensus_mask(patient, region, aft)
         non_consensus_mask = get_non_consensus_mask(patient, region, aft)
         for ii in range(aft.shape[0]):
-            div[ii, :, :] = non_consensus_mask * aft[ii, :, :] + consensus_mask * (1-aft[ii, :, :])
+            div[ii, :, :] = non_consensus_mask * aft[ii, :, :] + consensus_mask * (1 - aft[ii, :, :])
     else:
         for ii in range(aft.shape[0]):
             div[ii, :, :] = aft[0, :, :] * (1 - aft[ii, :, :])
@@ -168,12 +168,13 @@ def get_mean_divergence_patient(patient, region, consensus=False):
     all_second_div = np.mean(div[:, get_site_mask(aft, 2)], axis=-1)
     all_third_div = np.mean(div[:, get_site_mask(aft, 3)], axis=-1)
 
-    div_dict = {"consensus": {}, "non_consensus": {}, "all":{}}
+    div_dict = {"consensus": {}, "non_consensus": {}, "all": {}}
     div_dict["consensus"] = {"low": consensus_low_div, "high": consensus_high_div, "all": consensus_div,
                              "first": consensus_first_div,  "second": consensus_second_div, "third": consensus_third_div}
     div_dict["non_consensus"] = {"low": non_consensus_low_div, "high": non_consensus_high_div, "all": non_consensus_div,
                                  "first": non_consensus_first_div,  "second": non_consensus_second_div, "third": non_consensus_third_div}
-    div_dict["all"] = {"all": all_div, "first": all_first_div, "second": all_second_div, "third": all_third_div}
+    div_dict["all"] = {"all": all_div, "first": all_first_div,
+                       "second": all_second_div, "third": all_third_div}
 
     return div_dict
 
@@ -190,7 +191,7 @@ def make_divergence_dict(time, consensus=False):
 
     divergence_dict = {}
     for region in regions:
-        divergence_dict[region] = {"consensus": {}, "non_consensus": {}, "all":{}}
+        divergence_dict[region] = {"consensus": {}, "non_consensus": {}, "all": {}}
 
         nb_traj = np.zeros_like(time)
         for key in fitness_keys:
@@ -223,10 +224,58 @@ def make_divergence_dict(time, consensus=False):
                 divergence_dict[region]["all"][key][:len(
                     tmp_time)] += patient_div_dict["all"][key]
 
-
         for key1 in ["consensus", "non_consensus", "all"]:
             for key2 in divergence_dict[region][key1].keys():
                 divergence_dict[region][key1][key2] = divergence_dict[region][key1][key2] / nb_traj
+
+    return divergence_dict
+
+
+def make_patient_divergence_dict(consensus=False, time=np.arange(0, 2000, 40)):
+    """
+    Creates a dictionary with the divergence in time for each patient.
+    Format of the dictionary : dict[region][patient][consensus/non_consensus/all][high/low/all/first/second/third]
+    """
+
+    regions = ["env", "pol", "gag"]
+    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
+    fitness_keys = ["low", "high", "all", "first", "second", "third"]
+
+    divergence_dict = {}
+    for region in regions:
+        divergence_dict[region] = {}
+        for patient_name in patient_names:
+            tmp_time = time[time < patient.dsi[-1]]
+            divergence_dict[region][patient_name] = {}
+            patient = Patient.load(patient_name)
+            patient_div_dict = get_mean_divergence_patient(patient, region, consensus)
+
+            for key in fitness_keys:
+                divergence_dict[region]["consensus"][key] = np.zeros_like(time, dtype=float)
+                divergence_dict[region]["non_consensus"][key] = np.zeros_like(time, dtype=float)
+                if key in ["all", "first", "second", "third"]:
+                    divergence_dict[region]["all"][key] = np.zeros_like(time, dtype=float)
+
+            for key in fitness_keys:
+                patient_div_dict["consensus"][key] = np.interp(
+                    tmp_time, patient.dsi, patient_div_dict["consensus"][key])
+                patient_div_dict["non_consensus"][key] = np.interp(
+                    tmp_time, patient.dsi, patient_div_dict["non_consensus"][key])
+
+                divergence_dict[region]["consensus"][key][:len(
+                    tmp_time)] += patient_div_dict["consensus"][key]
+                divergence_dict[region]["non_consensus"][key][:len(
+                    tmp_time)] += patient_div_dict["non_consensus"][key]
+
+            for key in ["all", "first", "second", "third"]:
+                patient_div_dict["all"][key] = np.interp(
+                    tmp_time, patient.dsi, patient_div_dict["all"][key])
+                divergence_dict[region]["all"][key][:len(
+                    tmp_time)] += patient_div_dict["all"][key]
+
+            for key1 in ["consensus", "non_consensus", "all"]:
+                for key2 in divergence_dict[region][key1].keys():
+                    divergence_dict[region][key1][key2] = divergence_dict[region][key1][key2] / nb_traj
 
     return divergence_dict
 
@@ -265,5 +314,5 @@ if __name__ == "__main__":
     regions = ["env", "pol", "gag"]
 
     time = np.arange(0, 3100, 100)
-    divergence_dict = make_divergence_dict(time, consensus=True)
-    save_divergence_dict(divergence_dict, filename="divergence_dict_consensus")
+    # divergence_dict = make_divergence_dict(time, consensus=True)
+    # save_divergence_dict(divergence_dict, filename="divergence_dict_consensus")
