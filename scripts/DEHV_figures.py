@@ -2,6 +2,7 @@
 import filenames
 from hivevo.patients import Patient
 from trajectory import Trajectory, load_trajectory_dict
+from divergence import load_divergence_dict, WH_evo_rate
 import numpy as np
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -189,7 +190,7 @@ def get_trajectories_offset(trajectories, freq_range):
     return trajectories
 
 
-if __name__ == "__main__":
+def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     trajectories = load_trajectory_dict("trajectory_dict")
     # times, means, freq_ranges = make_mean_in_time_dict(trajectories)
     # bootstrap_dict, times = make_bootstrap_mean_dict(trajectories, 100)
@@ -199,9 +200,6 @@ if __name__ == "__main__":
     bootstrap_dict = load_bootstrap_dict()
     trajectories_scheme = get_trajectories_offset(trajectories["all"]["rev"], [0.4, 0.6])
 
-    fontsize = 16
-    grid_alpha = 0.5
-    fill_alpha = 0.15
     colors = ["C0", "C1", "C2", "C4"]
     freq_ranges = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8]]
 
@@ -252,3 +250,55 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig("Reversion_DEHV.png", format="png")
     plt.show()
+
+
+def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14, colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]):
+    time_average = np.arange(0, 3100, 100)
+    divergence_dict = load_divergence_dict("divergence_dict_founder")
+
+    plt.figure(figsize=(14, 10))
+    for ii, region in enumerate(["env", "pol", "gag"]):
+        plt.plot(time_average[:21], divergence_dict[region]["all"]
+                 ["all"][:21], '-', color=colors[ii], label=region)
+    plt.grid()
+    plt.xlabel("Time since infection [days]", fontsize=fontsize)
+    plt.ylabel("Divergence", fontsize=fontsize)
+    plt.xticks(fontsize=tick_fontsize)
+    plt.yticks(fontsize=tick_fontsize)
+    plt.legend(fontsize=fontsize)
+    plt.tight_layout()
+    plt.savefig("Divergence_region.png", format="png")
+    plt.show()
+
+
+def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14, colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]):
+    non_consensus = [22, 7, 11]  # percentage of non consensus sites for env pol and gag
+    time_average = np.arange(0, 3100, 100)
+    divergence_dict = load_divergence_dict("divergence_dict_founder")
+
+    plt.figure(figsize=(14, 10))
+    for ii, region in enumerate(["env", "pol", "gag"]):
+        plt.plot(time_average[:21], divergence_dict[region]["consensus"]
+                 ["all"][:21], '-', color=colors[ii], label=region)
+        plt.plot(time_average[:21], divergence_dict[region]
+                 ["non_consensus"]["all"][:21], '--', color=colors[ii])
+        plt.text(time_average[11] - 30, divergence_dict[region]["non_consensus"]["all"]
+                 [11] + 0.003, str(non_consensus[ii]) + "%", fontsize=fontsize, color=colors[ii])
+
+    plt.plot([0], [0], "k-", label="consensus")
+    plt.plot([0], [0], "k--", label="non_consensus")
+    plt.grid()
+    plt.xlabel("Time since infection [days]", fontsize=fontsize)
+    plt.ylabel("Divergence", fontsize=fontsize)
+    plt.xticks(fontsize=tick_fontsize)
+    plt.yticks(fontsize=tick_fontsize)
+    plt.legend(fontsize=fontsize)
+    plt.tight_layout()
+    plt.savefig("Divergence_consensus.png", format="png")
+    plt.show()
+
+
+if __name__ == "__main__":
+    # mean_in_time_plot()
+    # divergence_region_plot()
+    divergence_consensus_plot()
