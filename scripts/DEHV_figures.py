@@ -271,7 +271,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     # save(bootstrap_dict, "bootstrap_dict")
     times = create_time_bins()
     times = 0.5 * (times[:-1] + times[1:]) / 365
-    bootstrap_dict = load_bootstrap_dict()
+    bootstrap_dict = load_dict()
     trajectories_scheme = get_trajectories_offset(trajectories["all"]["rev"], [0.4, 0.6])
 
     colors = ["C0", "C1", "C2", "C4"]
@@ -293,7 +293,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     axs[0].set_ylabel("Frequency", fontsize=fontsize)
     axs[0].set_ylim([-0.03, 1.03])
     axs[0].grid(grid_alpha)
-    axs[0].set_xlim([-677, 3000])
+    axs[0].set_xlim([-677/365, 3000/365])
 
     line1, = axs[0].plot([0], [0], "k-")
     line2, = axs[0].plot([0], [0], "-", color=colors[1])
@@ -322,7 +322,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
                                                         "reversion", "non-reversion"], fontsize=fontsize, ncol=2, loc="lower right")
 
     plt.tight_layout()
-    # plt.savefig("Reversion_DEHV.png", format="png")
+    plt.savefig("Reversion_DEHV.png", format="png")
     plt.show()
 
 
@@ -419,5 +419,5 @@ def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
 if __name__ == "__main__":
     # mean_in_time_plot()
     # divergence_region_plot()
-    divergence_consensus_plot()
-    # divergence_site_plot()
+    # divergence_consensus_plot()
+    # divergence_site_plot(colors=["C3", "C7", "C9"])
