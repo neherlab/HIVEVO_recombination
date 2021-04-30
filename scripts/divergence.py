@@ -231,55 +231,6 @@ def make_divergence_dict(time, consensus=False):
     return divergence_dict
 
 
-def make_patient_divergence_dict(consensus=False, time=np.arange(0, 2000, 40)):
-    """
-    Creates a dictionary with the divergence in time for each patient.
-    Format of the dictionary : dict[region][patient][consensus/non_consensus/all][high/low/all/first/second/third]
-    """
-
-    regions = ["env", "pol", "gag"]
-    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    fitness_keys = ["low", "high", "all", "first", "second", "third"]
-
-    divergence_dict = {}
-    for region in regions:
-        divergence_dict[region] = {}
-        for patient_name in patient_names:
-            tmp_time = time[time < patient.dsi[-1]]
-            divergence_dict[region][patient_name] = {}
-            patient = Patient.load(patient_name)
-            patient_div_dict = get_mean_divergence_patient(patient, region, consensus)
-
-            for key in fitness_keys:
-                divergence_dict[region]["consensus"][key] = np.zeros_like(time, dtype=float)
-                divergence_dict[region]["non_consensus"][key] = np.zeros_like(time, dtype=float)
-                if key in ["all", "first", "second", "third"]:
-                    divergence_dict[region]["all"][key] = np.zeros_like(time, dtype=float)
-
-            for key in fitness_keys:
-                patient_div_dict["consensus"][key] = np.interp(
-                    tmp_time, patient.dsi, patient_div_dict["consensus"][key])
-                patient_div_dict["non_consensus"][key] = np.interp(
-                    tmp_time, patient.dsi, patient_div_dict["non_consensus"][key])
-
-                divergence_dict[region]["consensus"][key][:len(
-                    tmp_time)] += patient_div_dict["consensus"][key]
-                divergence_dict[region]["non_consensus"][key][:len(
-                    tmp_time)] += patient_div_dict["non_consensus"][key]
-
-            for key in ["all", "first", "second", "third"]:
-                patient_div_dict["all"][key] = np.interp(
-                    tmp_time, patient.dsi, patient_div_dict["all"][key])
-                divergence_dict[region]["all"][key][:len(
-                    tmp_time)] += patient_div_dict["all"][key]
-
-            for key1 in ["consensus", "non_consensus", "all"]:
-                for key2 in divergence_dict[region][key1].keys():
-                    divergence_dict[region][key1][key2] = divergence_dict[region][key1][key2] / nb_traj
-
-    return divergence_dict
-
-
 def save_divergence_dict(divergence_dict, filename="divergence_dict"):
     """
     Saves the divergence dict as a pickle.
