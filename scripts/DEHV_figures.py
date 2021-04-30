@@ -352,7 +352,6 @@ def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
 def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
                               colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
                               fill_alpha=0.15):
-    non_consensus = [22, 7, 11]  # percentage of non consensus sites for env pol and gag
     text_index = 40
     time_average = np.arange(0, 2001, 40)
     divergence_dict = load_dict("bootstrap_div_dict")
@@ -368,7 +367,6 @@ def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
         std = divergence_dict[region]["non_consensus"]["all"]["std"]
         plt.plot(time_average, mean, '--', color=colors[ii])
         plt.fill_between(time_average, mean-std, mean+std, alpha=fill_alpha, color=colors[ii])
-        plt.text(time_average[text_index] - 30, mean[text_index] + 0.003, str(non_consensus[ii]) + "%", fontsize=fontsize, color=colors[ii])
 
     plt.plot([0], [0], "k-", label="consensus")
     plt.plot([0], [0], "k--", label="non_consensus")
@@ -421,5 +419,5 @@ def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
 if __name__ == "__main__":
     # mean_in_time_plot()
     # divergence_region_plot()
-    # divergence_consensus_plot()
-    divergence_site_plot()
+    divergence_consensus_plot()
+    # divergence_site_plot()
