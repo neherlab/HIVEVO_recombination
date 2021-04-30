@@ -270,7 +270,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     # bootstrap_dict, times = make_bootstrap_mean_dict(trajectories, 100)
     # save(bootstrap_dict, "bootstrap_dict")
     times = create_time_bins()
-    times = 0.5 * (times[:-1] + times[1:])
+    times = 0.5 * (times[:-1] + times[1:]) / 365
     bootstrap_dict = load_bootstrap_dict()
     trajectories_scheme = get_trajectories_offset(trajectories["all"]["rev"], [0.4, 0.6])
 
@@ -282,14 +282,14 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     # Plot left
 
     for traj in trajectories_scheme:
-        axs[0].plot(traj.t, traj.frequencies, "k-", alpha=0.1, linewidth=1)
+        axs[0].plot(traj.t/365, traj.frequencies, "k-", alpha=0.1, linewidth=1)
 
     mean = bootstrap_dict["rev"]["[0.4, 0.6]"]["mean"]
     std = bootstrap_dict["rev"]["[0.4, 0.6]"]["std"]
     axs[0].plot(times, mean, '-', color=colors[1])
     axs[0].fill_between(times, mean - std, mean + std, color=colors[1], alpha=fill_alpha)
 
-    axs[0].set_xlabel("Time [days]", fontsize=fontsize)
+    axs[0].set_xlabel("Time [years]", fontsize=fontsize)
     axs[0].set_ylabel("Frequency", fontsize=fontsize)
     axs[0].set_ylim([-0.03, 1.03])
     axs[0].grid(grid_alpha)
@@ -314,7 +314,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     line4, = axs[1].plot([0], [0], "-", color=colors[1])
     line5, = axs[1].plot([0], [0], "-", color=colors[2])
 
-    axs[1].set_xlabel("Time [days]", fontsize=fontsize)
+    axs[1].set_xlabel("Time [years]", fontsize=fontsize)
     # axs[1].set_ylabel("Frequency", fontsize=fontsize)
     axs[1].set_ylim([-0.03, 1.03])
     axs[1].grid(grid_alpha)
@@ -329,7 +329,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
 def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
                            colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
                            fill_alpha=0.15):
-    time_average = np.arange(0, 2001, 40)
+    time_average = np.arange(0, 2001, 40) / 365
     divergence_dict = load_dict("bootstrap_div_dict")
 
     plt.figure(figsize=(14, 10))
@@ -339,7 +339,7 @@ def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
         plt.plot(time_average, mean, '-', color=colors[ii], label=region)
         plt.fill_between(time_average, mean + std, mean - std, color=colors[ii], alpha=fill_alpha)
     plt.grid()
-    plt.xlabel("Time since infection [days]", fontsize=fontsize)
+    plt.xlabel("Time since infection [years]", fontsize=fontsize)
     plt.ylabel("Divergence", fontsize=fontsize)
     plt.xticks(fontsize=tick_fontsize)
     plt.yticks(fontsize=tick_fontsize)
@@ -353,7 +353,7 @@ def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
                               colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
                               fill_alpha=0.15):
     text_index = 40
-    time_average = np.arange(0, 2001, 40)
+    time_average = np.arange(0, 2001, 40) / 365
     divergence_dict = load_dict("bootstrap_div_dict")
 
     plt.figure(figsize=(14, 10))
@@ -371,7 +371,7 @@ def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
     plt.plot([0], [0], "k-", label="consensus")
     plt.plot([0], [0], "k--", label="non_consensus")
     plt.grid()
-    plt.xlabel("Time since infection [days]", fontsize=fontsize)
+    plt.xlabel("Time since infection [years]", fontsize=fontsize)
     plt.ylabel("Divergence", fontsize=fontsize)
     plt.xticks(fontsize=tick_fontsize)
     plt.yticks(fontsize=tick_fontsize)
@@ -384,7 +384,7 @@ def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
 def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
                               colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
                               fill_alpha=0.15):
-    time_average = np.arange(0, 2001, 40)
+    time_average = np.arange(0, 2001, 40)/365
     divergence_dict = load_dict("bootstrap_div_dict")
 
     plt.figure(figsize=(14, 10))
@@ -406,7 +406,7 @@ def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
     plt.plot([0], [0], "-", label="second", color=colors[1])
     plt.plot([0], [0], "-", label="third", color=colors[2])
     plt.grid()
-    plt.xlabel("Time since infection [days]", fontsize=fontsize)
+    plt.xlabel("Time since infection [years]", fontsize=fontsize)
     plt.ylabel("Divergence", fontsize=fontsize)
     plt.xticks(fontsize=tick_fontsize)
     plt.yticks(fontsize=tick_fontsize)
