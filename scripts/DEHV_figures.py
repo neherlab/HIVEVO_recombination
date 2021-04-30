@@ -420,4 +420,4 @@ if __name__ == "__main__":
     # mean_in_time_plot()
     # divergence_region_plot()
     # divergence_consensus_plot()
-    # divergence_site_plot(colors=["C3", "C7", "C9"])
+    divergence_site_plot(colors=["C3", "C8", "C9"])

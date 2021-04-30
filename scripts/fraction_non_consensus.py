@@ -11,22 +11,6 @@ import trajectory
 sys.path.append("../scripts/")
 
 
-def get_sweep_mask(patient, aft, threshold_low=0.05):
-    # Masking low depth
-    depth = trajectory.get_depth(patient, region)
-    depth = np.tile(depth, (6, 1, 1))
-    depth = np.swapaxes(depth, 0, 1)
-    aft.mask = np.logical_or(aft.mask, ~depth)
-
-    initial_idx = patient.get_initial_indices(region)
-    aft_initial = aft[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis],
-                      initial_idx, np.arange(aft.shape[-1])]
-    aft_initial = aft_initial[:, 0, :]
-
-    mask = aft_initial <= threshold_low
-    mask = np.sum(mask, axis=0)
-    return mask
-
 
 def fraction_per_region():
     """
@@ -85,7 +69,7 @@ def fraction_per_site():
         mean_fraction_non_consensus = np.mean(fraction_non_consensus)
         std_fraction_non_consensus = np.std(fraction_non_consensus)
         print(f"Site {site}:")
-        print(f"""   Consensus {round(mean_consensus, 2)} += {round(std_consensus, 2)}   Non-consensus {round(mean_non_consensus, 2)} += {round(std_non_consensus, 2)}   Fraction non_consensus {round(mean_fraction_non_consensus,3)} += {round(std_fraction_non_consensus,3)}""")
+        print(f"""   Consensus {round(mean_consensus, 2)} += {round(std_consensus, 3)}   Non-consensus {round(mean_non_consensus, 2)} += {round(std_non_consensus, 3)}   Fraction non_consensus {round(mean_fraction_non_consensus,3)} += {round(std_fraction_non_consensus,3)}""")
 
 
 if __name__ == "__main__":
