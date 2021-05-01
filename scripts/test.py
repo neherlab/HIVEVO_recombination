@@ -34,12 +34,14 @@ if __name__ == "__main__":
     sweep_mask = get_sweep_mask(patient, aft, region)
 
     idxs = np.where(sweep_mask)[0]
-    fontsize = 16
+    fontsize = 24
+    ticksize = 16
 
     plt.figure(figsize= (10, 7))
     plt.plot(patient.dsi / 365, aft[:,:,idxs[2]])
     plt.xlabel("Time [years]", fontsize = fontsize)
     plt.ylabel("Frequency", fontsize = fontsize)
+    plt.tick_params(axis="both", labelsize=ticksize)
     plt.grid()
     plt.tight_layout()
     plt.legend(["A", "C", "G" ,"T" ,"-" ,"N"], fontsize = fontsize)

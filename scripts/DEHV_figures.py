@@ -1,8 +1,9 @@
 # Adds link to the scripts folder
 import filenames
 from hivevo.patients import Patient
-from trajectory import Trajectory, load_trajectory_dict
-from divergence import load_divergence_dict, WH_evo_rate, get_mean_divergence_patient
+import trajectory
+from divergence import load_divergence_dict, WH_evo_rate, get_mean_divergence_patient, divergence_matrix
+from hivevo.HIVreference import HIVreference
 import numpy as np
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -264,6 +265,45 @@ def get_trajectories_offset(trajectories, freq_range):
     return trajectories
 
 
+def get_divergence_in_time(region, patient, ref=HIVreference(subtype="any")):
+    """
+    Returns the 2D matrix with divergence at all genome postion through time. Sites that are too often gapped
+    are masked
+    """
+    aft = patient.get_allele_frequency_trajectories(region)
+    ref_filter = trajectory.get_reference_filter(patient, region, aft, ref)
+    div_3D = divergence_matrix(patient, region, aft, False)
+    initial_idx = patient.get_initial_indices(region)
+    div = div_3D[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
+    div = div[:, 0, :]
+    div = np.ma.array(div, mask=np.tile(~ref_filter, (aft.shape[0], 1)))
+    return div
+
+
+def get_bootstrap_divergence_hist(region, nb_bootstrap=10, nb_bin=20, nb_last=3):
+    """
+    Computes the histogram using bootstrapping over patients. Use the last nb_last timepoints.
+    """
+
+    hist_dict = {}
+    bootstrap_hist = []
+    for ii in range(nb_bootstrap):
+        bootstrap_names = bootstrap_patient_names()
+
+        divergence_hist = []
+        for name in bootstrap_names:
+            patient = Patient.load(name)
+            div2D = get_divergence_in_time(region, patient)
+            hist, bins = np.histogram(div2D[-nb_last:].flatten(), bins=nb_bin, range=(0, 1))
+            divergence_hist += [hist]
+        divergence_hist = np.sum(divergence_hist, axis=0)
+        bootstrap_hist += [divergence_hist]
+
+    hist_dict = {"mean": np.mean(bootstrap_hist, axis=0), "std": np.std(
+        bootstrap_hist, axis=0), "bins": 0.5*(bins[1:] +bins[:-1])}
+    return hist_dict
+
+
 def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     trajectories = load_trajectory_dict("trajectory_dict")
     # times, means, freq_ranges = make_mean_in_time_dict(trajectories)
@@ -282,7 +322,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     # Plot left
 
     for traj in trajectories_scheme:
-        axs[0].plot(traj.t/365, traj.frequencies, "k-", alpha=0.1, linewidth=1)
+        axs[0].plot(traj.t / 365, traj.frequencies, "k-", alpha=0.1, linewidth=1)
 
     mean = bootstrap_dict["rev"]["[0.4, 0.6]"]["mean"]
     std = bootstrap_dict["rev"]["[0.4, 0.6]"]["std"]
@@ -293,7 +333,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     axs[0].set_ylabel("Frequency", fontsize=fontsize)
     axs[0].set_ylim([-0.03, 1.03])
     axs[0].grid(grid_alpha)
-    axs[0].set_xlim([-677/365, 3000/365])
+    axs[0].set_xlim([-677 / 365, 3000 / 365])
 
     line1, = axs[0].plot([0], [0], "k-")
     line2, = axs[0].plot([0], [0], "-", color=colors[1])
@@ -361,12 +401,12 @@ def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
         mean = divergence_dict[region]["consensus"]["all"]["mean"]
         std = divergence_dict[region]["consensus"]["all"]["std"]
         plt.plot(time_average, mean, '-', color=colors[ii], label=region)
-        plt.fill_between(time_average, mean-std, mean+std, alpha=fill_alpha, color=colors[ii])
+        plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color=colors[ii])
 
         mean = divergence_dict[region]["non_consensus"]["all"]["mean"]
         std = divergence_dict[region]["non_consensus"]["all"]["std"]
         plt.plot(time_average, mean, '--', color=colors[ii])
-        plt.fill_between(time_average, mean-std, mean+std, alpha=fill_alpha, color=colors[ii])
+        plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color=colors[ii])
 
     plt.plot([0], [0], "k-", label="consensus")
     plt.plot([0], [0], "k--", label="non_consensus")
@@ -382,23 +422,23 @@ def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
 
 
 def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
-                              colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
-                              fill_alpha=0.15):
-    time_average = np.arange(0, 2001, 40)/365
+                         colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
+                         fill_alpha=0.15):
+    time_average = np.arange(0, 2001, 40) / 365
     divergence_dict = load_dict("bootstrap_div_dict")
 
-    plt.figure(figsize=(14, 10))
+    plt.figure(figsize=figsize)
     region = "pol"
     for ii, site in enumerate(["first", "second", "third"]):
         mean = divergence_dict[region]["consensus"][site]["mean"]
         std = divergence_dict[region]["consensus"][site]["std"]
         plt.plot(time_average, mean, '-', color=colors[ii])
-        plt.fill_between(time_average, mean-std, mean+std, alpha=fill_alpha, color=colors[ii])
+        plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color=colors[ii])
 
         mean = divergence_dict[region]["non_consensus"][site]["mean"]
         std = divergence_dict[region]["non_consensus"][site]["std"]
         plt.plot(time_average, mean, '--', color=colors[ii])
-        plt.fill_between(time_average, mean-std, mean+std, alpha=fill_alpha, color=colors[ii])
+        plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color=colors[ii])
 
     plt.plot([0], [0], "k-", label="consensus")
     plt.plot([0], [0], "k--", label="non_consensus")
@@ -416,8 +456,42 @@ def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
     plt.show()
 
 
+def divergence_histogram(figsize=(14, 10), fontsize=20, tick_fontsize=14,
+                         colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
+                         fill_alpha=0.15):
+
+    region = "pol"
+    hist_dict = get_bootstrap_divergence_hist(region, nb_bootstrap=50, nb_bin=20, nb_last=3)
+    bins = np.linspace(0, 1, 20)
+
+    plt.figure(figsize=figsize)
+    # absolute
+    mean = hist_dict["mean"]
+    std = hist_dict["std"]
+    bins = hist_dict["bins"]
+    bins[0]=0.001
+    plt.plot(bins, mean/np.sum(hist_dict["mean"]), '.-', color=colors[0])
+    plt.fill_between(bins, (mean + std)/np.sum(hist_dict["mean"]), (mean - std)/np.sum(hist_dict["mean"]), alpha=fill_alpha, color=colors[0])
+    # relative
+    mean *= bins
+    std *= bins
+    plt.plot(bins, mean/np.sum(mean), '.-', color=colors[1])
+    plt.fill_between(bins, (mean + std)/np.sum(mean), (mean - std)/np.sum(mean), alpha=fill_alpha, color=colors[1])
+    plt.xlabel("Divergence values", fontsize=fontsize)
+    plt.ylabel("Contribution to divergence", fontsize=fontsize)
+    plt.yscale("log")
+    plt.xticks(fontsize=tick_fontsize)
+    plt.yticks(fontsize=tick_fontsize)
+    plt.xlim([0,1])
+    plt.grid()
+    plt.tight_layout()
+    plt.savefig("Divergence_hist.png", format="png")
+    plt.show()
+
+
 if __name__ == "__main__":
     # mean_in_time_plot()
     # divergence_region_plot()
     # divergence_consensus_plot()
-    divergence_site_plot(colors=["C3", "C8", "C9"])
+    # divergence_site_plot(colors=["C3", "C8", "C9"])
+    divergence_histogram()
