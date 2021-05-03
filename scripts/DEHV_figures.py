@@ -280,28 +280,52 @@ def get_divergence_in_time(region, patient, ref=HIVreference(subtype="any")):
     return div
 
 
-def get_bootstrap_divergence_hist(region, nb_bootstrap=10, nb_bin=20, nb_last=3):
+# def get_bootstrap_divergence_hist(region, bins, nb_bootstrap=10, nb_last=3):
+#     """
+#     Computes the histogram using bootstrapping over patients. Use the last nb_last timepoints.
+#     """
+#
+#     hist_dict = {}
+#     bootstrap_hist = []
+#     for ii in range(nb_bootstrap):
+#         bootstrap_names = bootstrap_patient_names()
+#
+#         divergence_hist = []
+#         for name in bootstrap_names:
+#             patient = Patient.load(name)
+#             div2D = get_divergence_in_time(region, patient)
+#             values = div2D[-nb_last:].flatten()
+#             hist, bins = np.histogram(values, bins=bins, range=(0, 1))
+#             divergence_hist += [hist]
+#         divergence_hist = np.sum(divergence_hist, axis=0)
+#         bootstrap_hist += [divergence_hist]
+#
+#     hist_dict = {"mean": np.mean(bootstrap_hist, axis=0), "std": np.std(
+#         bootstrap_hist, axis=0), "bins": 0.5*(bins[1:] +bins[:-1])}
+#     return hist_dict
+
+def get_divergence_cumulative_sum(patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]):
     """
-    Computes the histogram using bootstrapping over patients. Use the last nb_last timepoints.
+    Returns the divergence values for the last 3 datapoints of each patient. Returns both the raw values and
+    the cumulative sum (normalized to 1).
+    Taking only one every sampling time points as there is a lot of data.
     """
+    region = "pol"
+    nb_last = 3
+    sampling = 20
 
-    hist_dict = {}
-    bootstrap_hist = []
-    for ii in range(nb_bootstrap):
-        bootstrap_names = bootstrap_patient_names()
-
-        divergence_hist = []
-        for name in bootstrap_names:
-            patient = Patient.load(name)
-            div2D = get_divergence_in_time(region, patient)
-            hist, bins = np.histogram(div2D[-nb_last:].flatten(), bins=nb_bin, range=(0, 1))
-            divergence_hist += [hist]
-        divergence_hist = np.sum(divergence_hist, axis=0)
-        bootstrap_hist += [divergence_hist]
-
-    hist_dict = {"mean": np.mean(bootstrap_hist, axis=0), "std": np.std(
-        bootstrap_hist, axis=0), "bins": 0.5*(bins[1:] +bins[:-1])}
-    return hist_dict
+    all_values = []
+    for name in patient_names:
+        patient = Patient.load(name)
+        div2D = get_divergence_in_time(region, patient)
+        values = div2D[-nb_last:].flatten()
+        all_values += list(values[~values.mask])
+    all_values = np.sort(all_values)
+    cum_sum = np.cumsum(all_values)
+    cum_sum /= cum_sum[-1]
+    values = np.concatenate((all_values[::sampling], np.array([all_values[-1]])))
+    cumulative = np.concatenate((cum_sum[::sampling], np.array([cum_sum[-1]])))
+    return values, cumulative
 
 
 def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
@@ -366,7 +390,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     plt.show()
 
 
-def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
+def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
                            colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
                            fill_alpha=0.15):
     time_average = np.arange(0, 2001, 40) / 365
@@ -389,7 +413,7 @@ def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
     plt.show()
 
 
-def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
+def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
                               colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
                               fill_alpha=0.15):
     text_index = 40
@@ -408,6 +432,8 @@ def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
         plt.plot(time_average, mean, '--', color=colors[ii])
         plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color=colors[ii])
 
+        plt.plot(time_average, divergence_dict[region]["all"]["all"]["mean"], color="0.3")
+
     plt.plot([0], [0], "k-", label="consensus")
     plt.plot([0], [0], "k--", label="non_consensus")
     plt.grid()
@@ -421,7 +447,7 @@ def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
     plt.show()
 
 
-def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
+def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
                          colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
                          fill_alpha=0.15):
     time_average = np.arange(0, 2001, 40) / 365
@@ -456,37 +482,37 @@ def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=14,
     plt.show()
 
 
-def divergence_histogram(figsize=(14, 10), fontsize=20, tick_fontsize=14,
+def divergence_histogram(figsize=(14, 10), fontsize=20, tick_fontsize=18,
                          colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
                          fill_alpha=0.15):
 
-    region = "pol"
-    hist_dict = get_bootstrap_divergence_hist(region, nb_bootstrap=50, nb_bin=20, nb_last=3)
-    bins = np.linspace(0, 1, 20)
+    values, cumulative = get_divergence_cumulative_sum()
+    bins = np.linspace(0,values[-1],9)
+    idxs = [np.where(values>=bin)[0][0] for bin in bins]
+
+    hist = []
+    for ii in range(len(bins)-1):
+        hist += [cumulative[idxs[ii+1]]-cumulative[idxs[ii]]]
+
+    middle_bins = 0.5*(bins[1:] + bins[:-1])
 
     plt.figure(figsize=figsize)
-    # absolute
-    mean = hist_dict["mean"]
-    std = hist_dict["std"]
-    bins = hist_dict["bins"]
-    bins[0]=0.001
-    plt.plot(bins, mean/np.sum(hist_dict["mean"]), '.-', color=colors[0])
-    plt.fill_between(bins, (mean + std)/np.sum(hist_dict["mean"]), (mean - std)/np.sum(hist_dict["mean"]), alpha=fill_alpha, color=colors[0])
-    # relative
-    mean *= bins
-    std *= bins
-    plt.plot(bins, mean/np.sum(mean), '.-', color=colors[1])
-    plt.fill_between(bins, (mean + std)/np.sum(mean), (mean - std)/np.sum(mean), alpha=fill_alpha, color=colors[1])
+    # Cumulative distribution
+    plt.plot(values, cumulative, color="C1", label="Cumulative distribution")
+    # Histogram
+    plt.bar(middle_bins, hist, color="C0", width=0.95*middle_bins[0]*2, label="Distribution")
     plt.xlabel("Divergence values", fontsize=fontsize)
     plt.ylabel("Contribution to divergence", fontsize=fontsize)
-    plt.yscale("log")
+    plt.legend(fontsize=fontsize)
+    plt.xlim([-0.01, 1.01])
     plt.xticks(fontsize=tick_fontsize)
     plt.yticks(fontsize=tick_fontsize)
-    plt.xlim([0,1])
     plt.grid()
     plt.tight_layout()
     plt.savefig("Divergence_hist.png", format="png")
     plt.show()
+
+
 
 
 if __name__ == "__main__":
