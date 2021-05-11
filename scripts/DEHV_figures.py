@@ -304,7 +304,7 @@ def get_divergence_in_time(region, patient, ref=HIVreference(subtype="any")):
 #         bootstrap_hist, axis=0), "bins": 0.5*(bins[1:] +bins[:-1])}
 #     return hist_dict
 
-def get_divergence_cumulative_sum(patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]):
+def get_divergence_cumulative_sum(sample_slice=-3, patient_names=["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]):
     """
     Returns the divergence values for the last 3 datapoints of each patient. Returns both the raw values and
     the cumulative sum (normalized to 1).
@@ -318,7 +318,11 @@ def get_divergence_cumulative_sum(patient_names = ["p1", "p2", "p3", "p4", "p5",
     for name in patient_names:
         patient = Patient.load(name)
         div2D = get_divergence_in_time(region, patient)
-        values = div2D[-nb_last:].flatten()
+        if sample_slice < 0:
+            values = div2D[sample_slice:].flatten()
+        else:
+            values = div2D[:sample_slice].flatten()
+
         all_values += list(values[~values.mask])
     all_values = np.sort(all_values)
     cum_sum = np.cumsum(all_values)
@@ -328,8 +332,8 @@ def get_divergence_cumulative_sum(patient_names = ["p1", "p2", "p3", "p4", "p5",
     return values, cumulative
 
 
-def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
-    trajectories = load_trajectory_dict("trajectory_dict")
+def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5, ticksize=14):
+    trajectories = trajectory.load_trajectory_dict("trajectory_dict")
     # times, means, freq_ranges = make_mean_in_time_dict(trajectories)
     # bootstrap_dict, times = make_bootstrap_mean_dict(trajectories, 100)
     # save(bootstrap_dict, "bootstrap_dict")
@@ -358,6 +362,8 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     axs[0].set_ylim([-0.03, 1.03])
     axs[0].grid(grid_alpha)
     axs[0].set_xlim([-677 / 365, 3000 / 365])
+    axs[0].tick_params(axis="x", labelsize=ticksize)
+    axs[0].tick_params(axis="y", labelsize=ticksize)
 
     line1, = axs[0].plot([0], [0], "k-")
     line2, = axs[0].plot([0], [0], "-", color=colors[1])
@@ -382,6 +388,7 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5):
     # axs[1].set_ylabel("Frequency", fontsize=fontsize)
     axs[1].set_ylim([-0.03, 1.03])
     axs[1].grid(grid_alpha)
+    axs[1].tick_params(axis="x", labelsize=ticksize)
     axs[1].legend([line3, line4, line5, line1, line2], ["[0.2, 0.4]", "[0.4, 0.6]", "[0.6, 0.8]",
                                                         "reversion", "non-reversion"], fontsize=fontsize, ncol=2, loc="lower right")
 
@@ -395,16 +402,17 @@ def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
                            fill_alpha=0.15):
     time_average = np.arange(0, 2001, 40) / 365
     divergence_dict = load_dict("bootstrap_div_dict")
+    gene_annotation = [" (surface proteins)", "  (viral enzymes)", " (capsid proteins)"]
 
     plt.figure(figsize=(14, 10))
     for ii, region in enumerate(["env", "pol", "gag"]):
         mean = divergence_dict[region]["all"]["all"]["mean"]
         std = divergence_dict[region]["all"]["all"]["std"]
-        plt.plot(time_average, mean, '-', color=colors[ii], label=region)
+        plt.plot(time_average, mean, '-', color=colors[ii], label=region + gene_annotation[ii])
         plt.fill_between(time_average, mean + std, mean - std, color=colors[ii], alpha=fill_alpha)
     plt.grid()
     plt.xlabel("Time since infection [years]", fontsize=fontsize)
-    plt.ylabel("Divergence", fontsize=fontsize)
+    plt.ylabel("Mean divergence", fontsize=fontsize)
     plt.xticks(fontsize=tick_fontsize)
     plt.yticks(fontsize=tick_fontsize)
     plt.legend(fontsize=fontsize)
@@ -413,32 +421,32 @@ def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
     plt.show()
 
 
-def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
-                              colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
-                              fill_alpha=0.15):
+def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18, fill_alpha=0.15):
+    region = "pol"
     text_index = 40
     time_average = np.arange(0, 2001, 40) / 365
     divergence_dict = load_dict("bootstrap_div_dict")
 
     plt.figure(figsize=(14, 10))
-    for ii, region in enumerate(["env", "pol", "gag"]):
-        mean = divergence_dict[region]["consensus"]["all"]["mean"]
-        std = divergence_dict[region]["consensus"]["all"]["std"]
-        plt.plot(time_average, mean, '-', color=colors[ii], label=region)
-        plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color=colors[ii])
 
-        mean = divergence_dict[region]["non_consensus"]["all"]["mean"]
-        std = divergence_dict[region]["non_consensus"]["all"]["std"]
-        plt.plot(time_average, mean, '--', color=colors[ii])
-        plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color=colors[ii])
+    mean = divergence_dict[region]["all"]["all"]["mean"]
+    std = divergence_dict[region]["all"]["all"]["std"]
+    plt.plot(time_average, mean, color="C1", label="pol all")
+    plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color="C1")
 
-        plt.plot(time_average, divergence_dict[region]["all"]["all"]["mean"], color="0.3")
+    mean = divergence_dict[region]["consensus"]["all"]["mean"]
+    std = divergence_dict[region]["consensus"]["all"]["std"]
+    plt.plot(time_average, mean, '-', color="tab:red", label="pol consensus")
+    plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color="tab:red")
 
-    plt.plot([0], [0], "k-", label="consensus")
-    plt.plot([0], [0], "k--", label="non_consensus")
+    mean = divergence_dict[region]["non_consensus"]["all"]["mean"]
+    std = divergence_dict[region]["non_consensus"]["all"]["std"]
+    plt.plot(time_average, mean, '--', color="tab:green", label="pol non-consensus")
+    plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color="tab:green")
+
     plt.grid()
     plt.xlabel("Time since infection [years]", fontsize=fontsize)
-    plt.ylabel("Divergence", fontsize=fontsize)
+    plt.ylabel("Mean divergence", fontsize=fontsize)
     plt.xticks(fontsize=tick_fontsize)
     plt.yticks(fontsize=tick_fontsize)
     plt.legend(fontsize=fontsize)
@@ -466,14 +474,17 @@ def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
         plt.plot(time_average, mean, '--', color=colors[ii])
         plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color=colors[ii])
 
+    # plt.plot(time_average, divergence_dict[region]["non_consensus"]["all"]["mean"], 'k--')
+    # plt.plot(time_average, divergence_dict[region]["consensus"]["all"]["mean"], 'k-')
+
     plt.plot([0], [0], "k-", label="consensus")
-    plt.plot([0], [0], "k--", label="non_consensus")
-    plt.plot([0], [0], "-", label="first", color=colors[0])
-    plt.plot([0], [0], "-", label="second", color=colors[1])
-    plt.plot([0], [0], "-", label="third", color=colors[2])
+    plt.plot([0], [0], "k--", label="non-consensus")
+    plt.plot([0], [0], "-", label="1st  codon position", color=colors[0])
+    plt.plot([0], [0], "-", label="2nd codon position", color=colors[1])
+    plt.plot([0], [0], "-", label="3rd  codon position", color=colors[2])
     plt.grid()
     plt.xlabel("Time since infection [years]", fontsize=fontsize)
-    plt.ylabel("Divergence", fontsize=fontsize)
+    plt.ylabel("Mean divergence", fontsize=fontsize)
     plt.xticks(fontsize=tick_fontsize)
     plt.yticks(fontsize=tick_fontsize)
     plt.legend(fontsize=fontsize)
@@ -482,28 +493,30 @@ def divergence_site_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
     plt.show()
 
 
-def divergence_histogram(figsize=(14, 10), fontsize=20, tick_fontsize=18,
-                         colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
-                         fill_alpha=0.15):
-
-    values, cumulative = get_divergence_cumulative_sum()
-    bins = np.linspace(0,values[-1],9)
-    idxs = [np.where(values>=bin)[0][0] for bin in bins]
-
-    hist = []
-    for ii in range(len(bins)-1):
-        hist += [cumulative[idxs[ii+1]]-cumulative[idxs[ii]]]
-
-    middle_bins = 0.5*(bins[1:] + bins[:-1])
+def divergence_histogram(figsize=(14, 10), fontsize=20, tick_fontsize=18, bar_alpha=0.5,
+                         colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]):
 
     plt.figure(figsize=figsize)
-    # Cumulative distribution
-    plt.plot(values, cumulative, color="C1", label="Cumulative distribution")
-    # Histogram
-    plt.bar(middle_bins, hist, color="C0", width=0.95*middle_bins[0]*2, label="Distribution")
-    plt.xlabel("Divergence values", fontsize=fontsize)
+
+    for jj, idx_slice in enumerate([3, -3]):
+        values, cumulative = get_divergence_cumulative_sum(idx_slice)
+        bins = np.linspace(0, values[-1], 11)
+        idxs = [np.where(values >= bin)[0][0] for bin in bins]
+
+        hist = []
+        for ii in range(len(bins) - 1):
+            hist += [cumulative[idxs[ii + 1]] - cumulative[idxs[ii]]]
+
+        middle_bins = 0.5 * (bins[1:] + bins[:-1])
+
+        # Cumulative distribution
+        # plt.plot(values, cumulative, color="C1", label="Cumulative distribution") # Uncomment to show cumulative distribution
+        # Histogram
+        plt.bar(middle_bins, hist, color=colors[jj], width=0.95 * middle_bins[0] * 2, alpha=bar_alpha)
+
+    plt.xlabel("Frequency of new variants", fontsize=fontsize)
     plt.ylabel("Contribution to divergence", fontsize=fontsize)
-    plt.legend(fontsize=fontsize)
+    plt.legend(["Early timepoints", "Last timepoints"], fontsize=fontsize)
     plt.xlim([-0.01, 1.01])
     plt.xticks(fontsize=tick_fontsize)
     plt.yticks(fontsize=tick_fontsize)
@@ -513,11 +526,9 @@ def divergence_histogram(figsize=(14, 10), fontsize=20, tick_fontsize=18,
     plt.show()
 
 
-
-
 if __name__ == "__main__":
     # mean_in_time_plot()
-    # divergence_region_plot()
+    # divergence_region_plot(colors=["C0", "C1", "C4", "C5", "C6", "C7", "C8", "C9"])
     # divergence_consensus_plot()
-    # divergence_site_plot(colors=["C3", "C8", "C9"])
-    divergence_histogram()
+    # divergence_site_plot(colors=["C6", "C8", "C9"])
+    # divergence_histogram()
