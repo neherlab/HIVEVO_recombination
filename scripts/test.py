@@ -8,7 +8,9 @@ import os
 from hivevo.patients import Patient
 from divergence import get_non_consensus_mask, get_consensus_mask
 import trajectory
+import functools
 sys.path.append("../scripts/")
+
 
 def get_sweep_mask(patient, aft, region, threshold_low=0.05):
     # Masking low depth
@@ -23,27 +25,44 @@ def get_sweep_mask(patient, aft, region, threshold_low=0.05):
     aft_initial = aft_initial[:, 0, :]
 
     mask = aft_initial <= threshold_low
-    mask = np.sum(mask, axis=0)
+    mask = np.sum(mask, axis=0, dtype=bool)
     return mask
+
+
+def smooth(y, box_pts):
+    box = np.ones(box_pts) / box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
+
+
+def get_sweep_sites_sum(region, patient_names=["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]):
+    "Returns a 1D vector with the sum of sweep sites over all patients"
+    sites = []
+    for patient_name in patient_names:
+        patient = Patient.load(patient_name)
+        aft = patient.get_allele_frequency_trajectories(region)
+        sweep_mask = get_sweep_mask(patient, aft, region, threshold_low=0.5)
+        ref = HIVreference(subtype="any")
+        reference_mask = trajectory.get_reference_filter(patient, region, aft, ref)
+        sweep_mask = sweep_mask[reference_mask]
+        sites = sites + [list(sweep_mask[:2964])]
+
+    sites = np.array(sites)
+    sites = np.sum(sites, axis=0, dtype=int)
+    return sites
 
 
 if __name__ == "__main__":
     region = "pol"
-    patient = Patient.load("p1")
-    aft = patient.get_allele_frequency_trajectories(region)
-    sweep_mask = get_sweep_mask(patient, aft, region)
+    fontsize = 16
 
-    idxs = np.where(sweep_mask)[0]
-    fontsize = 24
-    ticksize = 16
+    sites = get_sweep_sites_sum(region)
+    sites = smooth(sites, 50)
 
-    plt.figure(figsize= (10, 7))
-    plt.plot(patient.dsi / 365, aft[:,:,idxs[2]])
-    plt.xlabel("Time [years]", fontsize = fontsize)
-    plt.ylabel("Frequency", fontsize = fontsize)
-    plt.tick_params(axis="both", labelsize=ticksize)
+    plt.figure(figsize=(10, 7))
+    plt.plot(sites)
+    plt.xlabel("Position", fontsize=fontsize)
+    plt.ylabel("Sweeping sites", fontsize=fontsize)
     plt.grid()
-    plt.tight_layout()
-    plt.legend(["A", "C", "G" ,"T" ,"-" ,"N"], fontsize = fontsize)
-    plt.savefig("Trajectory_example.png", format="png")
+    plt.savefig("Sweep_positions.png", format="png")
     plt.show()
