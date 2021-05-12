@@ -123,10 +123,11 @@ def get_position_mask(patient, region, aft, consensus, position):
     return np.logical_and(position_mask, consensus_mask)
 
 
-def get_mean_divergence_patient(patient, region, consensus=False):
+def get_mean_divergence_patient(patient, region, consensus=False, threshold=0.0):
     """
     Returns a dictionary with the divergence over time for different categories.
     If consensus==True computes the divergence to the HIV consensus sequence instead of the divergence to founder sequence.
+    threshold exculdes divergence values that are inferior to the threshold.
     """
 
     # Needed data
@@ -135,6 +136,7 @@ def get_mean_divergence_patient(patient, region, consensus=False):
     initial_idx = patient.get_initial_indices(region)
     div = div_3D[np.arange(aft.shape[0])[:, np.newaxis, np.newaxis], initial_idx, np.arange(aft.shape[-1])]
     div = div[:, 0, :]
+    div[div<threshold] = 0
 
     # Masks
     consensus_mask = get_consensus_mask(patient, region, aft)

@@ -57,12 +57,12 @@ if __name__ == "__main__":
     fontsize = 16
 
     sites = get_sweep_sites_sum(region)
-    sites = smooth(sites, 50)
+    # sites = smooth(sites, 5)
 
     plt.figure(figsize=(10, 7))
     plt.plot(sites)
     plt.xlabel("Position", fontsize=fontsize)
     plt.ylabel("Sweeping sites", fontsize=fontsize)
     plt.grid()
-    plt.savefig("Sweep_positions.png", format="png")
+    # plt.savefig("Sweep_positions.png", format="png")
     plt.show()

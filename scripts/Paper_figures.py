@@ -166,54 +166,55 @@ def create_div_bootstrap_dict():
     return bootstrap_dict
 
 
-def make_bootstrap_divergence_dict(nb_bootstrap=10, consensus=False):
-    """
-    Creates a dictionary with the divergence in time for each patient.
-    Format of the dictionary : dict[region][patient][consensus/non_consensus/all][high/low/all/first/second/third]
-    Turn consensus to True to compute the divergence to consensus sequence instead of founder sequence.
-    """
-
-    regions = ["env", "pol", "gag"]
-    patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
-    fitness_keys = ["low", "high", "all", "first", "second", "third"]
-    time = np.arange(0, 2001, 40)
-
-    # Generating a dictionnary with the divergence for each patient (interpolated to the time vector)
-    divergence_dict = {}
-    for region in regions:
-        divergence_dict[region] = {}
-        for patient_name in patient_names:
-            patient = Patient.load(patient_name)
-            patient_div_dict = get_mean_divergence_patient(patient, region, consensus)
-            divergence_dict[region][patient_name] = patient_div_dict
-
-            for key in divergence_dict[region][patient_name].keys():
-                for key2 in divergence_dict[region][patient_name][key].keys():
-                    divergence_dict[region][patient_name][key][key2] = np.interp(
-                        time, patient.dsi, divergence_dict[region][patient_name][key][key2])
-
-    # Bootstrapping the divergence values over patients. Tips of the dict are list with 1 div vector for each of the bootstrapping
-    bootstrap_dict = create_div_bootstrap_dict()
-    for ii in range(nb_bootstrap):
-        bootstrap_names = bootstrap_patient_names()
-        for region in regions:
-            dict_list = []
-            for patient_name in bootstrap_names:
-                dict_list += [divergence_dict[region][patient_name]]
-
-            for key in divergence_dict[region][patient_names[0]].keys():
-                for key2 in divergence_dict[region][patient_names[0]][key].keys():
-                    tmp = np.array([dict[key][key2] for dict in dict_list])
-                    bootstrap_dict[region][key][key2] += [np.mean(tmp, axis=0)]
-
-    # Averaging the bootstrapping
-    for region in bootstrap_dict.keys():
-        for key in bootstrap_dict[region].keys():
-            for key2 in bootstrap_dict[region][key].keys():
-                tmp = np.array(bootstrap_dict[region][key][key2]).copy()
-                bootstrap_dict[region][key][key2] = {"mean": np.mean(tmp, axis=0), "std": np.std(tmp, axis=0)}
-
-    return time, bootstrap_dict
+# def make_bootstrap_divergence_dict(nb_bootstrap=10, consensus=False, threshold=0.0):
+#     """
+#     Creates a dictionary with the divergence in time for each patient.
+#     Format of the dictionary : dict[region][patient][consensus/non_consensus/all][high/low/all/first/second/third]
+#     Turn consensus to True to compute the divergence to consensus sequence instead of founder sequence.
+#     """
+#
+#     regions = ["env", "pol", "gag"]
+#     patient_names = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]
+#     fitness_keys = ["low", "high", "all", "first", "second", "third"]
+#     time = np.arange(0, 2001, 40)
+#
+#     # Generating a dictionnary with the divergence for each patient (interpolated to the time vector)
+#     divergence_dict = {}
+#     for region in regions:
+#         divergence_dict[region] = {}    # mean_in_time_plot()
+#
+#         for patient_name in patient_names:
+#             patient = Patient.load(patient_name)
+#             patient_div_dict = get_mean_divergence_patient(patient, region, consensus, threshold)
+#             divergence_dict[region][patient_name] = patient_div_dict
+#
+#             for key in divergence_dict[region][patient_name].keys():
+#                 for key2 in divergence_dict[region][patient_name][key].keys():
+#                     divergence_dict[region][patient_name][key][key2] = np.interp(
+#                         time, patient.dsi, divergence_dict[region][patient_name][key][key2])
+#
+#     # Bootstrapping the divergence values over patients. Tips of the dict are list with 1 div vector for each of the bootstrapping
+#     bootstrap_dict = create_div_bootstrap_dict()
+#     for ii in range(nb_bootstrap):
+#         bootstrap_names = bootstrap_patient_names()
+#         for region in regions:
+#             dict_list = []
+#             for patient_name in bootstrap_names:
+#                 dict_list += [divergence_dict[region][patient_name]]
+#
+#             for key in divergence_dict[region][patient_names[0]].keys():
+#                 for key2 in divergence_dict[region][patient_names[0]][key].keys():
+#                     tmp = np.array([dict[key][key2] for dict in dict_list])
+#                     bootstrap_dict[region][key][key2] += [np.mean(tmp, axis=0)]
+#
+#     # Averaging the bootstrapping
+#     for region in bootstrap_dict.keys():
+#         for key in bootstrap_dict[region].keys():
+#             for key2 in bootstrap_dict[region][key].keys():
+#                 tmp = np.array(bootstrap_dict[region][key][key2]).copy()
+#                 bootstrap_dict[region][key][key2] = {"mean": np.mean(tmp, axis=0), "std": np.std(tmp, axis=0)}
+#
+#     return time, bootstrap_dict
 
 
 def save(obj, filename):
@@ -280,39 +281,13 @@ def get_divergence_in_time(region, patient, ref=HIVreference(subtype="any")):
     return div
 
 
-# def get_bootstrap_divergence_hist(region, bins, nb_bootstrap=10, nb_last=3):
-#     """
-#     Computes the histogram using bootstrapping over patients. Use the last nb_last timepoints.
-#     """
-#
-#     hist_dict = {}
-#     bootstrap_hist = []
-#     for ii in range(nb_bootstrap):
-#         bootstrap_names = bootstrap_patient_names()
-#
-#         divergence_hist = []
-#         for name in bootstrap_names:
-#             patient = Patient.load(name)
-#             div2D = get_divergence_in_time(region, patient)
-#             values = div2D[-nb_last:].flatten()
-#             hist, bins = np.histogram(values, bins=bins, range=(0, 1))
-#             divergence_hist += [hist]
-#         divergence_hist = np.sum(divergence_hist, axis=0)
-#         bootstrap_hist += [divergence_hist]
-#
-#     hist_dict = {"mean": np.mean(bootstrap_hist, axis=0), "std": np.std(
-#         bootstrap_hist, axis=0), "bins": 0.5*(bins[1:] +bins[:-1])}
-#     return hist_dict
-
-def get_divergence_cumulative_sum(sample_slice=-3, patient_names=["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]):
+def get_divergence_cumulative_sum(sample_slice=-3, sampling=1, patient_names=["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p11"]):
     """
     Returns the divergence values for the last 3 datapoints of each patient. Returns both the raw values and
     the cumulative sum (normalized to 1).
     Taking only one every sampling time points as there is a lot of data.
     """
     region = "pol"
-    nb_last = 3
-    sampling = 20
 
     all_values = []
     for name in patient_names:
@@ -397,19 +372,27 @@ def mean_in_time_plot(fontsize=16, fill_alpha=0.15, grid_alpha=0.5, ticksize=14)
     plt.show()
 
 
-def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
+def divergence_region_plot(figsize=(14, 10), fontsize=16, tick_fontsize=14,
                            colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
-                           fill_alpha=0.15):
+                           fill_alpha=0.15,
+                           lines=["-", "--"]):
     time_average = np.arange(0, 2001, 40) / 365
-    divergence_dict = load_dict("bootstrap_div_dict")
-    gene_annotation = [" (surface proteins)", "  (viral enzymes)", " (capsid proteins)"]
+    divergence_dict = load_dict("bootstrap_div_dict_0")
+    divergence_dict2 = load_dict("bootstrap_div_dict_0.5")
 
     plt.figure(figsize=(14, 10))
     for ii, region in enumerate(["env", "pol", "gag"]):
-        mean = divergence_dict[region]["all"]["all"]["mean"]
-        std = divergence_dict[region]["all"]["all"]["std"]
-        plt.plot(time_average, mean, '-', color=colors[ii], label=region + gene_annotation[ii])
-        plt.fill_between(time_average, mean + std, mean - std, color=colors[ii], alpha=fill_alpha)
+        for jj, div_dict in enumerate([divergence_dict, divergence_dict2]):
+            mean = div_dict[region]["all"]["all"]["mean"]
+            std = div_dict[region]["all"]["all"]["std"]
+            if jj == 0:
+                plt.plot(time_average, mean, lines[jj], color=colors[ii], label=region)
+            else:
+                plt.plot(time_average, mean, lines[jj], color=colors[ii])
+
+            plt.fill_between(time_average, mean + std, mean - std, color=colors[ii], alpha=fill_alpha)
+    plt.plot([0], [0], "k-", label="Threshold = 0")
+    plt.plot([0], [0], "k--", label="Threshold = 0.5")
     plt.grid()
     plt.xlabel("Time since infection [years]", fontsize=fontsize)
     plt.ylabel("Mean divergence", fontsize=fontsize)
@@ -417,33 +400,33 @@ def divergence_region_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18,
     plt.yticks(fontsize=tick_fontsize)
     plt.legend(fontsize=fontsize)
     plt.tight_layout()
-    plt.savefig("Divergence_region.png", format="png")
+    plt.savefig("Divergence_region_threshold.png", format="png")
     plt.show()
 
 
-def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18, fill_alpha=0.15):
+def divergence_consensus_plot(figsize=(14, 10), fontsize=16, tick_fontsize=14, fill_alpha=0.15,
+                              colors=["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]):
     region = "pol"
     text_index = 40
     time_average = np.arange(0, 2001, 40) / 365
-    divergence_dict = load_dict("bootstrap_div_dict")
+    divergence_dict = load_dict("bootstrap_div_dict_0")
+    divergence_dict2 = load_dict("bootstrap_div_dict_0.5")
 
     plt.figure(figsize=(14, 10))
 
-    mean = divergence_dict[region]["all"]["all"]["mean"]
-    std = divergence_dict[region]["all"]["all"]["std"]
-    plt.plot(time_average, mean, color="C1", label="pol all")
-    plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color="C1")
+    for ii, mut_type in enumerate(["all", "consensus", "non_consensus"]):
+        for jj, div_dict in enumerate([divergence_dict, divergence_dict2]):
+            mean = div_dict[region][mut_type]["all"]["mean"]
+            std = div_dict[region][mut_type]["all"]["std"]
+            if jj == 0:
+                plt.plot(time_average, mean, '-', color=colors[ii], label=mut_type + " pol")
+            else:
+                plt.plot(time_average, mean, '--', color=colors[ii])
+            plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color=colors[ii])
 
-    mean = divergence_dict[region]["consensus"]["all"]["mean"]
-    std = divergence_dict[region]["consensus"]["all"]["std"]
-    plt.plot(time_average, mean, '-', color="tab:red", label="pol consensus")
-    plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color="tab:red")
 
-    mean = divergence_dict[region]["non_consensus"]["all"]["mean"]
-    std = divergence_dict[region]["non_consensus"]["all"]["std"]
-    plt.plot(time_average, mean, '--', color="tab:green", label="pol non-consensus")
-    plt.fill_between(time_average, mean - std, mean + std, alpha=fill_alpha, color="tab:green")
-
+    plt.plot([0], [0], "k-", label="Threshold = 0")
+    plt.plot([0], [0], "k--", label="Threshold = 0.5")
     plt.grid()
     plt.xlabel("Time since infection [years]", fontsize=fontsize)
     plt.ylabel("Mean divergence", fontsize=fontsize)
@@ -451,7 +434,7 @@ def divergence_consensus_plot(figsize=(14, 10), fontsize=20, tick_fontsize=18, f
     plt.yticks(fontsize=tick_fontsize)
     plt.legend(fontsize=fontsize)
     plt.tight_layout()
-    plt.savefig("Divergence_consensus.png", format="png")
+    plt.savefig("Divergence_consensus_threshold.png", format="png")
     plt.show()
 
 
@@ -498,10 +481,16 @@ def divergence_histogram(figsize=(14, 10), fontsize=20, tick_fontsize=18, bar_al
 
     plt.figure(figsize=figsize)
 
-    for jj, idx_slice in enumerate([3, -3]):
-        values, cumulative = get_divergence_cumulative_sum(idx_slice)
-        bins = np.linspace(0, values[-1], 11)
-        idxs = [np.where(values >= bin)[0][0] for bin in bins]
+    for jj, idx_slice in enumerate([2, -2]):
+        values, cumulative = get_divergence_cumulative_sum(idx_slice, sampling=1)
+        bins = np.linspace(0, 1, 11)
+        # breakpoint()
+        idxs = []
+        for bin in bins:
+            if np.where(values >= bin)[0].size != 0:
+                idxs += [np.where(values >= bin)[0][0]]
+            else:
+                idxs += [cumulative.shape[-1] - 1]
 
         hist = []
         for ii in range(len(bins) - 1):
@@ -522,13 +511,16 @@ def divergence_histogram(figsize=(14, 10), fontsize=20, tick_fontsize=18, bar_al
     plt.yticks(fontsize=tick_fontsize)
     plt.grid()
     plt.tight_layout()
-    plt.savefig("Divergence_hist.png", format="png")
+    # plt.savefig("DivergencFe_hist.png", format="png")
     plt.show()
 
 
 if __name__ == "__main__":
-    # mean_in_time_plot()
-    # divergence_region_plot(colors=["C0", "C1", "C4", "C5", "C6", "C7", "C8", "C9"])
-    # divergence_consensus_plot()
+    # for threshold in [0, 0.15, 0.30, 0.5]:
+    #     time, dict = make_bootstrap_divergence_dict(nb_bootstrap=10, consensus=False, threshold=threshold)
+    #     save(dict, "bootstrap_div_dict_" + str(threshold))
+
+    # divergence_region_plot()
+    divergence_consensus_plot()
     # divergence_site_plot(colors=["C6", "C8", "C9"])
     # divergence_histogram()
